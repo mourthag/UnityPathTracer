@@ -1,0 +1,332 @@
+const static int MAX_MATERIALS = 16;
+
+float2 _Pixel;
+float _Seed;
+
+static const float PI = 3.14159265f;
+static const float EPSILON = 1e-8;
+
+//=======================================
+//=-------------------------------------=
+//=---------------Math------------------=
+//=-------------------------------------=
+//=======================================
+
+float rand()
+{
+	float result = frac(sin(_Seed / 100.0f * dot(_Pixel, float2(12.9898f, 78.233f))) * 43758.5453f);
+	_Seed += 1.0f;
+	return result;
+}
+
+float3x3 GetTangentSpace(float3 normal)
+{
+	// Choose a helper vector for the cross product
+	float3 helper = float3(1, 0, 0);
+	if (abs(normal.x) > 0.99f)
+		helper = float3(0, 0, 1);
+	// Generate vectors
+	float3 tangent = normalize(cross(normal, helper));
+	float3 binormal = normalize(cross(normal, tangent));
+	return float3x3(tangent, binormal, normal);
+}
+
+float3 SampleHemisphere(float3 normal)
+{
+	// Uniformly sample hemisphere direction
+	float cosTheta = rand();
+	float sinTheta = sqrt(max(0.0f, 1.0f - cosTheta * cosTheta));
+	float phi = 2 * PI * rand();
+	float3 tangentSpaceDir = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+	// Transform direction to world space
+	return mul(tangentSpaceDir, GetTangentSpace(normal));
+}
+
+//=======================================
+//=-------------------------------------=
+//=---------------Rays------------------=
+//=-------------------------------------=
+//=======================================
+
+struct Ray {
+	float3 origin;
+	float3 direction;
+	float3 energy;
+};
+
+Ray CreateRay(float3 origin, float3 direction) {
+	Ray ray;
+	ray.origin = origin;
+	ray.direction = direction;
+	ray.energy = float3(1.0f, 1.0f, 1.0f);
+	return ray;
+}
+
+struct RayHit {
+	float3 position;
+	float3 normal;
+	int matID;
+};
+
+RayHit CreateRayHit() {
+	RayHit hit;
+	hit.position = float3(0.0f, 0.0f, 0.0f);
+	hit.normal = float3(0.0f, 0.0f, 0.0f);
+	hit.matID = MAX_MATERIALS;
+	return hit;						  
+}
+
+//=======================================
+//=-------------------------------------=
+//=------------Materials----------------=
+//=-------------------------------------=
+//=======================================
+
+interface iMaterial {
+	bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay);
+};
+
+
+class PerfectMirror : iMaterial {
+	
+	float3 albedo;
+	bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay)
+	{
+		scatteredRay.origin = hit.position + hit.normal * 0.0001f;
+		scatteredRay.direction = reflect(inRay.direction, hit.normal);
+		scatteredRay.energy = inRay.energy * albedo;
+		attenuation = float3(0.0f, 0.0f, 0.0f);
+		return true;
+	}
+};
+
+PerfectMirror CreateMirror(float3 color)
+{
+	PerfectMirror a;
+	a.albedo = color;
+	return a;
+}
+
+class LambertianDiffuse : iMaterial {
+	float3 albedo;
+
+	bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay)
+	{
+		scatteredRay.origin = hit.position + hit.normal * 0.0001f;
+		scatteredRay.direction = SampleHemisphere(hit.normal);
+		scatteredRay.energy = inRay.energy * 2.0f * albedo * saturate(dot(hit.normal, scatteredRay.direction));
+		attenuation = float3(0.0f, 0.0f, 0.0f);
+		return true;
+	}
+};
+
+LambertianDiffuse CreateLambertian(float3 color)
+{
+	LambertianDiffuse a;
+	a.albedo = color;
+	return a;
+}
+
+class Emissive : iMaterial
+{
+    float3 emissive;
+    
+    bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay)
+    {
+        scatteredRay.energy = float3(0.0f, 0.0f, 0.0f);
+        attenuation = emissive;
+        return true;
+    }
+};
+
+Emissive CreateEmissive(float3 color)
+{
+    Emissive a;
+    a.emissive = color;
+    return a;
+}
+
+//=======================================
+//=-------------------------------------=
+//=------------Geometries---------------=
+//=-------------------------------------=
+//=======================================
+
+bool IntersectTriangle_MT97(Ray ray, inout float t, inout float3 barycentric, float3 v1, float3 v2, float3 v3)
+{
+    float3 edge1 = v2 - v1;
+    float3 edge2 = v3 - v1;
+		
+    float3 pvec = cross(ray.direction, edge2);
+    float det = dot(edge1, pvec);
+    if (det < EPSILON)
+        return false;
+		
+    float invDet = 1.0f / det;
+		
+    float3 tvec = ray.origin - v1;
+    barycentric.x = invDet * dot(tvec, pvec);
+    if (barycentric.x < 0.0 || barycentric.x > 1.0)
+        return false;
+
+    float3 qvec = cross(tvec, edge1);
+    barycentric.y = invDet * dot(ray.direction, qvec);
+    if (barycentric.y < 0.0 || barycentric.y + barycentric.x > 1.0)
+        return false;
+		
+    t = dot(edge2, qvec) * invDet;
+    barycentric.z = 1.0 - barycentric.x - barycentric.y;
+		
+    return true;
+
+}
+
+interface iGeometry {
+	void Intersect(Ray ray, inout RayHit hit, inout float t);
+};
+
+class Ground : iGeometry {
+
+	int matID;
+
+	void Intersect(Ray ray, inout RayHit hit, inout float t)
+	{
+		//how long does it take to walk the height of the camera downwards
+        float t_intersect = -ray.origin.y / ray.direction.y;
+		//do we have an intersect and is it better?
+        if (t_intersect > 0 && t_intersect < t)
+		{
+			//apply hit
+            t = t_intersect;
+			hit.position = ray.origin + t * ray.direction;
+			hit.normal = float3(0.0f, 1.0f, 0.0f);
+			hit.matID = matID;
+		}
+	}
+};
+
+Ground CreateGround() {
+	Ground g;
+	g.matID = 1;
+	return g;
+}
+
+class Sphere : iGeometry {
+	
+	int matID;
+
+	float3 position;
+	float radius;
+
+	void Intersect(Ray ray, inout RayHit hit, inout float t)
+	{
+		// Calculate distance along the ray where the sphere is intersected
+		float3 d = ray.origin - position;
+		float p1 = -dot(ray.direction, d);
+		float p2sqr = p1 * p1 - dot(d, d) + radius * radius;
+		if (p2sqr < 0)
+			return;
+		float p2 = sqrt(p2sqr);
+		float t_intersect = p1 - p2 > 0 ? p1 - p2 : p1 + p2;
+        if (t_intersect > 0 && t_intersect < t)
+		{
+            t = t_intersect;
+			hit.position = ray.origin + t * ray.direction;
+			hit.normal = normalize(hit.position - position);
+			hit.matID = matID;
+		}
+	}
+};
+
+Sphere CreateSphere(float3 position, float radius)
+{
+	Sphere s;
+	s.position = position;
+	s.radius = radius;
+	s.matID = 0;
+	return s;
+}
+
+class Triangle : iGeometry
+{
+	int matID;
+	
+	float3 v1;
+	float3 v2;
+	float3 v3;
+	
+	void Intersect(Ray ray, inout RayHit hit, inout float t)
+	{
+		float t_intersect;
+		float3 barycentric;
+		
+        if (IntersectTriangle_MT97(ray, t_intersect, barycentric, v1, v2, v3))
+		{
+            if (t_intersect > 0 && t_intersect < t)
+			{
+                t = t_intersect;
+				hit.position = ray.origin + t * ray.direction;
+				hit.matID = matID;
+				hit.normal = normalize(cross(v2 - v1, v3 - v1));
+			}	
+		}
+	}
+};
+
+Triangle CreateTriangle(float3 v1, float3 v2, float3 v3)
+{
+	Triangle t;
+	t.v1 = v1;
+	t.v2 = v2;
+	t.v3 = v3;
+	t.matID = 2;
+	return t;
+}
+
+struct MeshObject
+{
+    float4x4 modelMatrix;
+    int indexOffset;
+    int triangleCount;
+};
+
+StructuredBuffer<MeshObject> _MeshObjects;
+StructuredBuffer<float3> _Vertices;
+StructuredBuffer<int> _Indices;
+
+class Mesh : iGeometry
+{
+    MeshObject mesh;
+    
+    void Intersect(Ray ray, inout RayHit hit, inout float t)
+    {
+        for (uint i = 0; i < mesh.triangleCount; i++)
+        {
+            float3 v1 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 0]], 1)).xyz;
+            float3 v2 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 1]], 1)).xyz;
+            float3 v3 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 2]], 1)).xyz;
+            
+            float3 barycentric;
+            float t_intersect;
+            
+            if (IntersectTriangle_MT97(ray, t_intersect, barycentric, v1, v2, v3))
+            {
+                if (t_intersect > 0 && t_intersect < t)
+                {
+                    t = t_intersect;
+                    hit.position = ray.origin + t * ray.direction;
+                    hit.matID = 3;
+                    hit.normal = normalize(cross(v2 - v1, v3 - v1));
+                }
+            }
+
+        }
+    }
+};
+
+Mesh CreateMesh(MeshObject object)
+{
+    Mesh m;
+    m.mesh = object;
+    return m;
+}

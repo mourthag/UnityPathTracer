@@ -1,0 +1,139 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+#include "Defines.compute"
+
+RWTexture2D<float4> Result;
+
+RWTexture2D<float4> PrevResult;
+float _CurrentSample;
+
+float4x4 _CameraToWorld;
+float4x4 _CameraInverseProjection;
+float2 _PixelOffset;
+
+Texture2D<float4> _SkyboxTexture;
+SamplerState sampler_SkyboxTexture;
+
+const static int MAX_DEPTH = 16;
+const static int NUM_GEOMETRIES = 10;
+
+Ray CreateCameraRay(float2 uv)
+{
+	//extract translation component from camera to World
+	float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
+
+	//get view-space direction from ndc
+	float3 direction = mul(_CameraInverseProjection, float4(uv, 0.0f, 1.0f)).xyz;
+	//transform view-space direction to world-space direction
+	direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
+	//normalize the direction
+	direction = normalize(direction);
+
+	return CreateRay(origin, direction);
+}
+
+void Trace(Ray ray, iGeometry geometries[NUM_GEOMETRIES], inout RayHit bestHit, inout float t)
+{
+    t = 1.#INF;
+	bestHit = CreateRayHit();
+	for (int i = 0; i < NUM_GEOMETRIES; i++)
+	{
+		geometries[i].Intersect(ray, bestHit, t);
+	}
+}
+
+float3 Shade(inout Ray ray, RayHit hit, float t, iMaterial materials[MAX_MATERIALS])
+{	
+	if (hit.matID < MAX_MATERIALS)
+	{
+		Ray scattered = CreateRay(float3(0.0f, 0.0f, 0.0f), float3(0.0f, 0.0f, 0.0f));
+		float3 attenuation = float3(0.0f, 0.0f, 0.0f);
+
+		if(hit.matID == 0)
+			materials[0].Scatter(ray, hit, attenuation, scattered);
+		if (hit.matID == 1)
+			materials[1].Scatter(ray, hit, attenuation, scattered);
+		if (hit.matID == 2)
+            materials[2].Scatter(ray, hit, attenuation, scattered);
+        if (hit.matID == 3)
+            materials[3].Scatter(ray, hit, attenuation, scattered);
+
+		ray = scattered;
+
+		return attenuation;
+	}
+	else {
+		ray.energy = 0.0f;
+
+		//render sky
+		// Sample the skybox and write it
+		float theta = acos(ray.direction.y) / -PI;
+		float phi = atan2(ray.direction.x, -ray.direction.z) / -PI * 0.5f;
+		return _SkyboxTexture.SampleLevel(sampler_SkyboxTexture, float2(phi, theta), 0).xyz;
+	}
+}
+
+[numthreads(8, 8, 1)]
+void CSMain (uint3 groupid : SV_GroupThreadID, uint3 dpID : SV_DispatchThreadID)
+{
+	uint width, height;
+    Result.GetDimensions(width, height);
+    _Pixel = dpID.xy;
+    
+	iMaterial materials[MAX_MATERIALS];
+	materials[0] = CreateEmissive(float3(0.9f, 0.9f, 0.9f));
+    materials[1] = CreateLambertian(float3(0.5f, 0.5f, 0.5f));
+    materials[2] = CreateMirror(float3(0.85f, 0.85f, 0.85f));
+	materials[3] = CreateMirror(float3(1.0f, 0.78f, 0.34f));
+
+	iGeometry geometries[NUM_GEOMETRIES];
+	geometries[0] = CreateGround();
+	geometries[1] = CreateSphere(float3(0.0, 1.0, 0.0), 1.0);
+	geometries[2] = CreateSphere(float3(4.0, 2.0, 0), 2.0);
+	geometries[3] = CreateSphere(float3(0, 1.0, 3.0), 1.0);
+	geometries[4] = CreateSphere(float3(5, 0.5, -3.0), 0.5);
+    geometries[5] = CreateMesh(_MeshObjects[0]);
+    geometries[6] = CreateMesh(_MeshObjects[1]);
+    geometries[7] = CreateTriangle(
+						float3(-10, 0, 10),
+                        float3(-10, 0, -10),
+						float3(-10, 10, 0));
+    geometries[8] = CreateTriangle(
+						float3(10, 0, -10),
+						float3(10, 0, 10),
+						float3(10, 10, 0));
+	geometries[9] = CreateTriangle(
+						float3(10, 0, 10),
+						float3(-10, 0, 10),
+						float3(0, 10, 10));
+    
+
+    // Transform pixel to [-1,1] range
+    float2 uv = float2((dpID.xy + _PixelOffset) / float2(width, height) * 2.0f - 1.0f);
+
+
+	// Get a ray for the UVs
+	Ray ray = CreateCameraRay(uv);
+	RayHit hit = CreateRayHit();
+	float t = 1.#INF;	
+        
+    //Trace and Shade 
+    float3 result = float3(0.0f, 0.0f, 0.0f);
+	for (int i = 0; i < MAX_DEPTH; i++)
+	{
+		Trace(ray, geometries, hit, t);
+		result += ray.energy * Shade(ray, hit, t, materials);
+
+		if (!any(ray.energy))
+			break;
+	}
+
+    //write result
+    float3 prevResult = PrevResult[dpID.xy].rgb;
+    float3 finalResult = (prevResult * (_CurrentSample) + result) / (_CurrentSample + 1.0);
+    Result[dpID.xy] = float4(finalResult, 1.0f);
+    PrevResult[dpID.xy] = float4(finalResult, 1.0f);
+
+
+}
