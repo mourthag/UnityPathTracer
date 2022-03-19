@@ -185,8 +185,10 @@ public class PathTracer : MonoBehaviour
 
 
         // Set the target and dispatch the compute shader
-        int threadGroupsX = Mathf.CeilToInt(Screen.width / 8.0f);
-        int threadGroupsY = Mathf.CeilToInt(Screen.height / 8.0f);
+        uint groupSizeX, groupSizeY, groupSizeZ;
+        PathTracingShader.GetKernelThreadGroupSizes(0, out groupSizeX, out groupSizeY, out groupSizeZ);
+        int threadGroupsX = Mathf.CeilToInt(Screen.width / groupSizeX);
+        int threadGroupsY = Mathf.CeilToInt(Screen.height / groupSizeY);
         PathTracingShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
         
         // Blit the result texture to the screen

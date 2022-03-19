@@ -330,3 +330,50 @@ Mesh CreateMesh(MeshObject object)
     m.mesh = object;
     return m;
 }
+
+/*  
+ *  As the buffer cannot be easily converted into an array of mesh objects, we use this method to test intersection of all meshes.
+ */
+class Meshes : iGeometry
+{
+    
+    void Intersect(Ray ray, inout RayHit hit, inout float t)
+    {
+
+		uint numMeshes, stride; 
+		_MeshObjects.GetDimensions(numMeshes, stride);
+		for (uint meshID = 0; meshID < numMeshes; meshID++)
+		{
+			MeshObject mesh = _MeshObjects[meshID];
+			for (uint i = 0; i < mesh.triangleCount; i++)
+			{
+				float3 v1 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 0]], 1)).xyz;
+				float3 v2 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 1]], 1)).xyz;
+				float3 v3 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 2]], 1)).xyz;
+				
+				float3 barycentric;
+				float t_intersect;
+				
+				if (IntersectTriangle_MT97(ray, t_intersect, barycentric, v1, v2, v3))
+				{
+					if (t_intersect > 0 && t_intersect < t)
+					{
+						t = t_intersect;
+						hit.position = ray.origin + t * ray.direction;
+						hit.matID = 3;
+						hit.normal = normalize(cross(v2 - v1, v3 - v1));
+					}
+				}
+
+			}
+
+			
+		}
+    }
+};
+
+Meshes CreateMeshes()
+{
+    Meshes m;
+    return m;
+}
