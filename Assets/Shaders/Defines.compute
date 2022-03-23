@@ -87,67 +87,7 @@ interface iMaterial {
 };
 
 
-class PerfectMirror : iMaterial {
-	
-	float3 albedo;
-	bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay)
-	{
-		scatteredRay.origin = hit.position + hit.normal * 0.0001f;
-		scatteredRay.direction = reflect(inRay.direction, hit.normal);
-		scatteredRay.energy = inRay.energy * albedo;
-		attenuation = float3(0.0f, 0.0f, 0.0f);
-		return true;
-	}
-};
-
-PerfectMirror CreateMirror(float3 color)
-{
-	PerfectMirror a;
-	a.albedo = color;
-	return a;
-}
-
-class LambertianDiffuse : iMaterial {
-	float3 albedo;
-
-	bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay)
-	{
-		scatteredRay.origin = hit.position + hit.normal * 0.0001f;
-		scatteredRay.direction = SampleHemisphere(hit.normal);
-		scatteredRay.energy = inRay.energy * 2.0f * albedo * saturate(dot(hit.normal, scatteredRay.direction));
-		attenuation = float3(0.0f, 0.0f, 0.0f);
-		return true;
-	}
-};
-
-LambertianDiffuse CreateLambertian(float3 color)
-{
-	LambertianDiffuse a;
-	a.albedo = color;
-	return a;
-}
-
-class Emissive : iMaterial
-{
-    float3 emissive;
-    
-    bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay)
-    {
-        scatteredRay.energy = float3(0.0f, 0.0f, 0.0f);
-        attenuation = emissive;
-        return true;
-    }
-};
-
-Emissive CreateEmissive(float3 color)
-{
-    Emissive a;
-    a.emissive = color;
-    return a;
-}
-
 struct MaterialBufferObject {
-	int type;
 	float3 albedo;
 	float3 specular;
 	float3 emissive;
@@ -156,34 +96,32 @@ struct MaterialBufferObject {
 
 StructuredBuffer<MaterialBufferObject> _Materials;
 
-class DefaultMaterial : iMaterial
+class BufferMaterial
 {
-	MaterialBufferObject bufferObject;
-
-    bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay)
-	{
-		
-	}
+    bool Scatter(int matID, Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay)
+    {
+        MaterialBufferObject bufferObject = _Materials[matID];
+        
+        attenuation = 0;
+        scatteredRay.energy = 0;
+        
+        if (any(bufferObject.specular))
+        {   
+            scatteredRay.origin = hit.position + hit.normal * 0.0001f;
+            if (rand() > 0.15f)
+                scatteredRay.direction = reflect(inRay.direction, hit.normal);
+            else
+                scatteredRay.direction = SampleHemisphere(hit.normal);
+            scatteredRay.energy = inRay.energy * bufferObject.specular;
+        }
+        if(any(bufferObject.emissive))
+        {
+            attenuation = bufferObject.emissive;
+        }
+        
+        return true;
+    }
 };
-
-iMaterial CreateMaterialFromBuffer(MaterialBufferObject bufferObject)
-{
-	switch(bufferObject.type)
-	{
-		case 0:
-			return CreateMirror(bufferObject.specular);
-			break;
-		case 1:
-			return CreateLambertian(bufferObject.albedo);
-			break;
-		case 2:
-			return CreateEmissive(bufferObject.emissive);
-			break;
-		default:
-			return CreateLambertian(bufferObject.albedo);
-
-	}		
-}
 
 //=======================================
 //=-------------------------------------=
@@ -224,104 +162,6 @@ interface iGeometry {
 	void Intersect(Ray ray, inout RayHit hit, inout float t);
 };
 
-class Ground : iGeometry {
-
-	int matID;
-
-	void Intersect(Ray ray, inout RayHit hit, inout float t)
-	{
-		//how long does it take to walk the height of the camera downwards
-        float t_intersect = -ray.origin.y / ray.direction.y;
-		//do we have an intersect and is it better?
-        if (t_intersect > 0 && t_intersect < t)
-		{
-			//apply hit
-            t = t_intersect;
-			hit.position = ray.origin + t * ray.direction;
-			hit.normal = float3(0.0f, 1.0f, 0.0f);
-			hit.matID = matID;
-		}
-	}
-};
-
-Ground CreateGround() {
-	Ground g;
-	g.matID = 1;
-	return g;
-}
-
-class Sphere : iGeometry {
-	
-	int matID;
-
-	float3 position;
-	float radius;
-
-	void Intersect(Ray ray, inout RayHit hit, inout float t)
-	{
-		// Calculate distance along the ray where the sphere is intersected
-		float3 d = ray.origin - position;
-		float p1 = -dot(ray.direction, d);
-		float p2sqr = p1 * p1 - dot(d, d) + radius * radius;
-		if (p2sqr < 0)
-			return;
-		float p2 = sqrt(p2sqr);
-		float t_intersect = p1 - p2 > 0 ? p1 - p2 : p1 + p2;
-        if (t_intersect > 0 && t_intersect < t)
-		{
-            t = t_intersect;
-			hit.position = ray.origin + t * ray.direction;
-			hit.normal = normalize(hit.position - position);
-			hit.matID = matID;
-		}
-	}
-};
-
-Sphere CreateSphere(float3 position, float radius)
-{
-	Sphere s;
-	s.position = position;
-	s.radius = radius;
-	s.matID = 0;
-	return s;
-}
-
-class Triangle : iGeometry
-{
-	int matID;
-	
-	float3 v1;
-	float3 v2;
-	float3 v3;
-	
-	void Intersect(Ray ray, inout RayHit hit, inout float t)
-	{
-		float t_intersect;
-		float3 barycentric;
-		
-        if (IntersectTriangle_MT97(ray, t_intersect, barycentric, v1, v2, v3))
-		{
-            if (t_intersect > 0 && t_intersect < t)
-			{
-                t = t_intersect;
-				hit.position = ray.origin + t * ray.direction;
-				hit.matID = matID;
-				hit.normal = normalize(cross(v2 - v1, v3 - v1));
-			}	
-		}
-	}
-};
-
-Triangle CreateTriangle(float3 v1, float3 v2, float3 v3)
-{
-	Triangle t;
-	t.v1 = v1;
-	t.v2 = v2;
-	t.v3 = v3;
-	t.matID = 2;
-	return t;
-}
-
 struct MeshObject
 {
     float4x4 modelMatrix;
@@ -333,43 +173,6 @@ struct MeshObject
 StructuredBuffer<MeshObject> _MeshObjects;
 StructuredBuffer<float3> _Vertices;
 StructuredBuffer<int> _Indices;
-
-class Mesh : iGeometry
-{
-    MeshObject mesh;
-    
-    void Intersect(Ray ray, inout RayHit hit, inout float t)
-    {
-        for (int i = 0; i < mesh.triangleCount; i++)
-        {
-            float3 v1 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 0]], 1)).xyz;
-            float3 v2 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 1]], 1)).xyz;
-            float3 v3 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 2]], 1)).xyz;
-            
-            float3 barycentric;
-            float t_intersect;
-            
-            if (IntersectTriangle_MT97(ray, t_intersect, barycentric, v1, v2, v3))
-            {
-                if (t_intersect > 0 && t_intersect < t)
-                {
-                    t = t_intersect;
-                    hit.position = ray.origin + t * ray.direction;
-                    hit.matID = mesh.materialIndex;
-                    hit.normal = normalize(cross(v2 - v1, v3 - v1));
-                }
-            }
-
-        }
-    }
-};
-
-Mesh CreateMesh(MeshObject object)
-{
-    Mesh m;
-    m.mesh = object;
-    return m;
-}
 
 /*  
  *  As the buffer cannot be easily converted into an array of mesh objects, we use this method to test intersection of all meshes.
@@ -409,8 +212,206 @@ class Meshes : iGeometry
     }
 };
 
-Meshes CreateMeshes()
+//=======================================
+//=-------------------------------------=
+//=------------OBSOLETE-----------------=
+//=-------------------------------------=
+//=======================================
+class PerfectMirror : iMaterial
 {
-    Meshes m;
+	
+    float3 albedo;
+    bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay)
+    {
+        scatteredRay.origin = hit.position + hit.normal * 0.0001f;
+        scatteredRay.direction = reflect(inRay.direction, hit.normal);
+        scatteredRay.energy = inRay.energy * albedo;
+        attenuation = float3(0.0f, 0.0f, 0.0f);
+        return true;
+    }
+};
+
+PerfectMirror CreateMirror(float3 color)
+{
+    PerfectMirror a;
+    a.albedo = color;
+    return a;
+}
+
+class LambertianDiffuse : iMaterial
+{
+    float3 albedo;
+
+    bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay)
+    {
+        scatteredRay.origin = hit.position + hit.normal * 0.0001f;
+        scatteredRay.direction = SampleHemisphere(hit.normal);
+        scatteredRay.energy = inRay.energy * 2.0f * albedo * saturate(dot(hit.normal, scatteredRay.direction));
+        attenuation = float3(0.0f, 0.0f, 0.0f);
+        return true;
+    }
+};
+
+LambertianDiffuse CreateLambertian(float3 color)
+{
+    LambertianDiffuse a;
+    a.albedo = color;
+    return a;
+}
+
+class Emissive : iMaterial
+{
+    float3 emissive;
+    
+    bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay)
+    {
+        scatteredRay.energy = float3(0.0f, 0.0f, 0.0f);
+        attenuation = emissive;
+        return true;
+    }
+};
+
+Emissive CreateEmissive(float3 color)
+{
+    Emissive a;
+    a.emissive = color;
+    return a;
+}
+
+class Ground : iGeometry
+{
+
+    int matID;
+
+    void Intersect(Ray ray, inout RayHit hit, inout float t)
+    {
+		//how long does it take to walk the height of the camera downwards
+        float t_intersect = -ray.origin.y / ray.direction.y;
+		//do we have an intersect and is it better?
+        if (t_intersect > 0 && t_intersect < t)
+        {
+			//apply hit
+            t = t_intersect;
+            hit.position = ray.origin + t * ray.direction;
+            hit.normal = float3(0.0f, 1.0f, 0.0f);
+            hit.matID = matID;
+        }
+    }
+};
+
+Ground CreateGround()
+{
+    Ground g;
+    g.matID = 1;
+    return g;
+}
+
+class Sphere : iGeometry
+{
+	
+    int matID;
+
+    float3 position;
+    float radius;
+
+    void Intersect(Ray ray, inout RayHit hit, inout float t)
+    {
+		// Calculate distance along the ray where the sphere is intersected
+        float3 d = ray.origin - position;
+        float p1 = -dot(ray.direction, d);
+        float p2sqr = p1 * p1 - dot(d, d) + radius * radius;
+        if (p2sqr < 0)
+            return;
+        float p2 = sqrt(p2sqr);
+        float t_intersect = p1 - p2 > 0 ? p1 - p2 : p1 + p2;
+        if (t_intersect > 0 && t_intersect < t)
+        {
+            t = t_intersect;
+            hit.position = ray.origin + t * ray.direction;
+            hit.normal = normalize(hit.position - position);
+            hit.matID = matID;
+        }
+    }
+};
+
+Sphere CreateSphere(float3 position, float radius)
+{
+    Sphere s;
+    s.position = position;
+    s.radius = radius;
+    s.matID = 0;
+    return s;
+}
+
+class Triangle : iGeometry
+{
+    int matID;
+	
+    float3 v1;
+    float3 v2;
+    float3 v3;
+	
+    void Intersect(Ray ray, inout RayHit hit, inout float t)
+    {
+        float t_intersect;
+        float3 barycentric;
+		
+        if (IntersectTriangle_MT97(ray, t_intersect, barycentric, v1, v2, v3))
+        {
+            if (t_intersect > 0 && t_intersect < t)
+            {
+                t = t_intersect;
+                hit.position = ray.origin + t * ray.direction;
+                hit.matID = matID;
+                hit.normal = normalize(cross(v2 - v1, v3 - v1));
+            }
+        }
+    }
+};
+
+Triangle CreateTriangle(float3 v1, float3 v2, float3 v3)
+{
+    Triangle t;
+    t.v1 = v1;
+    t.v2 = v2;
+    t.v3 = v3;
+    t.matID = 2;
+    return t;
+}
+
+class Mesh : iGeometry
+{
+    MeshObject mesh;
+    
+    void Intersect(Ray ray, inout RayHit hit, inout float t)
+    {
+        for (int i = 0; i < mesh.triangleCount; i++)
+        {
+            float3 v1 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 0]], 1)).xyz;
+            float3 v2 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 1]], 1)).xyz;
+            float3 v3 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 2]], 1)).xyz;
+            
+            float3 barycentric;
+            float t_intersect;
+            
+            if (IntersectTriangle_MT97(ray, t_intersect, barycentric, v1, v2, v3))
+            {
+                if (t_intersect > 0 && t_intersect < t)
+                {
+                    t = t_intersect;
+                    hit.position = ray.origin + t * ray.direction;
+                    hit.matID = mesh.materialIndex;
+                    hit.normal = normalize(cross(v2 - v1, v3 - v1));
+                }
+            }
+
+        }
+    }
+};
+
+Mesh CreateMesh(MeshObject object)
+{
+    Mesh m;
+    m.mesh = object;
     return m;
 }

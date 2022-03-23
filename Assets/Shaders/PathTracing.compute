@@ -49,17 +49,9 @@ float3 Shade(inout Ray ray, RayHit hit, float t)
 	{
 		Ray scattered = CreateRay(float3(0.0f, 0.0f, 0.0f), float3(0.0f, 0.0f, 0.0f));
 		float3 attenuation = float3(0.0f, 0.0f, 0.0f);
-
-		uint count, stride;
-		_Materials.GetDimensions(count, stride);
-
-		for(uint matID = 0; matID < count; matID++)
-		{
-			if(matID == hit.matID)
-			{
-				CreateMaterialFromBuffer(_Materials[matID]).Scatter(ray, hit, attenuation, scattered);
-			}
-		}
+        
+        BufferMaterial mat;
+        mat.Scatter(hit.matID, ray, hit, attenuation, scattered);
 
 		ray = scattered;
 
@@ -82,28 +74,10 @@ void CSMain (uint3 groupid : SV_GroupThreadID, uint3 dpID : SV_DispatchThreadID)
 	uint width, height;
     Result.GetDimensions(width, height);
     _Pixel = dpID.xy;
-
+    
+    Meshes m;
 	iGeometry geometries[NUM_GEOMETRIES];
-	//geometries[0] = CreateGround();
-    geometries[0] = CreateMeshes();
-	/*geometries[1] = CreateSphere(float3(0.0, 1.0, 0.0), 1.0);
-	geometries[2] = CreateSphere(float3(4.0, 2.0, 0), 2.0);
-	geometries[3] = CreateSphere(float3(0, 1.0, 3.0), 1.0);
-	geometries[4] = CreateSphere(float3(5, 0.5, -3.0), 0.5);
-    geometries[5] = CreateMeshes();
-	geometries[6] = CreateSphere(float3(2, 0.5, -3.0), 0.5);
-    geometries[7] = CreateTriangle(
-						float3(-10, 0, 10),
-                        float3(-10, 0, -10),
-						float3(-10, 10, 0));
-    geometries[8] = CreateTriangle(
-						float3(10, 0, -10),
-						float3(10, 0, 10),
-						float3(10, 10, 0));
-	geometries[9] = CreateTriangle(
-						float3(10, 0, 10),
-						float3(-10, 0, 10),
-						float3(0, 10, 10));*/
+    geometries[0] = m;
     
 
     // Transform pixel to [-1,1] range
@@ -119,8 +93,7 @@ void CSMain (uint3 groupid : SV_GroupThreadID, uint3 dpID : SV_DispatchThreadID)
 	for (int i = 0; i < MAX_DEPTH; i++)
 	{
 		Trace(ray, geometries, hit, t);
-		result += ray.energy * Shade(ray, hit, t);
-
+        result += ray.energy * Shade(ray, hit, t);
 		if (!any(ray.energy))
 			break;
 	}

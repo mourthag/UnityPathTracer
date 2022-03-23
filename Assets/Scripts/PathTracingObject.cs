@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,14 +7,14 @@ using UnityEngine;
 [RequireComponent(typeof(MeshFilter))]
 public class PathTracingObject : MonoBehaviour
 {
-    public enum MaterialType {
-        Mirror,
-        LambertianDiffuse,
-        Emissive
+    [Serializable]
+    public struct MaterialObject
+    {
+        public Vector3 Albedo, Specular, Emissive;
     }
 
-    public MaterialType Type; 
-    public Vector3 Albedo, Specular, Emissive;
+    public MaterialObject Material;
+    private MaterialObject _oldMaterial;
 
     // Start is called before the first frame update
     void OnEnable()
@@ -27,6 +28,15 @@ public class PathTracingObject : MonoBehaviour
         {
             PathTracer.SetMeshObjectsNeedRebuilding();
             transform.hasChanged = false;
+        }
+    }
+
+    private void OnValidate()
+    {
+        if (!_oldMaterial.Equals(Material))
+        {
+            PathTracer.SetMeshObjectsNeedRebuilding();
+            _oldMaterial = Material;
         }
     }
 
