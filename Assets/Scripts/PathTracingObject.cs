@@ -6,6 +6,15 @@ using UnityEngine;
 [RequireComponent(typeof(MeshFilter))]
 public class PathTracingObject : MonoBehaviour
 {
+    public enum MaterialType {
+        Mirror,
+        LambertianDiffuse,
+        Emissive
+    }
+
+    public MaterialType Type; 
+    public Vector3 Albedo, Specular, Emissive;
+
     // Start is called before the first frame update
     void OnEnable()
     {
@@ -22,7 +31,7 @@ public class PathTracingObject : MonoBehaviour
     }
 
     // Update is called once per frame
-            void OnDisable()
+    void OnDisable()
     {
         PathTracer.UnregisterObject(this);
     }

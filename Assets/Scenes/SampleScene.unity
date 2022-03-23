@@ -248,6 +248,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 743576e2a6ae27647bb6bff91451a004, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Type: 0
+  Albedo: {x: 0, y: 0, z: 0}
+  Specular: {x: 0, y: 0, z: 0}
+  Emissive: {x: 0, y: 0, z: 0}
 --- !u!135 &959114478
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -318,7 +322,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 959114476}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.65, y: 3.2867217, z: -2.7}
+  m_LocalPosition: {x: -1.65, y: 3.2867217, z: -10.2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -566,6 +570,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 743576e2a6ae27647bb6bff91451a004, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Type: 0
+  Albedo: {x: 0, y: 0, z: 0}
+  Specular: {x: 0.8, y: 0.8, z: 0.9}
+  Emissive: {x: 0, y: 0, z: 0}
 --- !u!4 &7942857636352804656
 Transform:
   m_ObjectHideFlags: 0
@@ -611,3 +619,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 743576e2a6ae27647bb6bff91451a004, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Type: 0
+  Albedo: {x: 0, y: 0, z: 0}
+  Specular: {x: 0, y: 0, z: 0}
+  Emissive: {x: 0, y: 0, z: 0}

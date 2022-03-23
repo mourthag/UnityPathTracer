@@ -12,15 +12,26 @@ public class PathTracer : MonoBehaviour
         public Matrix4x4 ModelMatrix;
         public int IndexOffset;
         public int TriangleCount;
+        public int MaterialIndex;
+    }
+
+    struct MaterialBufferObject
+    {
+        public int type;
+        public Vector3 albedo;
+        public Vector3 specular;
+        public Vector3 emissive;
     }
 
     private static List<MeshObject> _meshObjects = new List<MeshObject>();
     private static List<Vector3> _vertices = new List<Vector3>();
     private static List<int> _indices = new List<int>();
+    private static List<MaterialBufferObject> _materialBufferObjects = new List<MaterialBufferObject>();
 
     private ComputeBuffer _meshObjectsBuffer;
     private ComputeBuffer _verticesBuffer;
     private ComputeBuffer _indicesBuffer;
+    private ComputeBuffer _materialBuffer;
 
     public ComputeShader PathTracingShader;
 
@@ -84,20 +95,33 @@ public class PathTracer : MonoBehaviour
             var indices = mesh.GetIndices(0);
             _indices.AddRange(indices.Select(index => index + firstVertex));
 
+            //Add material and get its index
+            int matIndex = _materialBufferObjects.Count();
+            MaterialBufferObject materialObject = new MaterialBufferObject{
+                type = (int)ptObject.Type,
+                albedo = ptObject.Albedo,
+                specular = ptObject.Specular,
+                emissive = ptObject.Emissive
+            };
+            _materialBufferObjects.Add(materialObject);
+            Debug.Log(materialObject.specular);
+
             //Create an object to boundle information of a Mesh and add it
             MeshObject meshObject = new MeshObject
             {
                 ModelMatrix = meshRenderer.localToWorldMatrix,
                 IndexOffset = firstIndex,
-                TriangleCount = indices.Length / 3
+                TriangleCount = indices.Length / 3,
+                MaterialIndex = matIndex
             };
             _meshObjects.Add(meshObject);
 
         }
 
-        CreateComputeBuffer<MeshObject>(ref _meshObjectsBuffer, _meshObjects, 72);
+        CreateComputeBuffer<MeshObject>(ref _meshObjectsBuffer, _meshObjects, 76);
         CreateComputeBuffer<Vector3>(ref _verticesBuffer, _vertices, 12);
         CreateComputeBuffer<int>(ref _indicesBuffer, _indices, 4);
+        CreateComputeBuffer<MaterialBufferObject>(ref _materialBuffer, _materialBufferObjects, 40);
     }
 
     private static void CreateComputeBuffer<T>(ref ComputeBuffer buffer, List<T> data, int stride)
@@ -162,6 +186,7 @@ public class PathTracer : MonoBehaviour
         SetComputeBuffer("_MeshObjects", _meshObjectsBuffer);
         SetComputeBuffer("_Vertices", _verticesBuffer);
         SetComputeBuffer("_Indices", _indicesBuffer);
+        SetComputeBuffer("_Materials", _materialBuffer);
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
@@ -232,5 +257,6 @@ public class PathTracer : MonoBehaviour
         _indicesBuffer?.Release();
         _verticesBuffer?.Release();
         _meshObjectsBuffer?.Release();
+        _materialBuffer?.Release();
     }
 }
