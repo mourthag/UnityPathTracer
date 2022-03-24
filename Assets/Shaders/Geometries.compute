@@ -1,0 +1,238 @@
+#ifndef GEOMETRIES_H
+#define GEOMETRIES_H
+
+#include "Defines.compute"
+
+//=======================================
+//=-------------------------------------=
+//=------------Geometries---------------=
+//=-------------------------------------=
+//=======================================
+
+bool IntersectTriangle_MT97(Ray ray, inout float t, inout float3 barycentric, float3 v1, float3 v2, float3 v3)
+{
+    float3 edge1 = v2 - v1;
+    float3 edge2 = v3 - v1;
+		
+    float3 pvec = cross(ray.direction, edge2);
+    float det = dot(edge1, pvec);
+    if (det < EPSILON)
+        return false;
+		
+    float invDet = 1.0f / det;
+		
+    float3 tvec = ray.origin - v1;
+    barycentric.x = invDet * dot(tvec, pvec);
+    if (barycentric.x < 0.0 || barycentric.x > 1.0)
+        return false;
+
+    float3 qvec = cross(tvec, edge1);
+    barycentric.y = invDet * dot(ray.direction, qvec);
+    if (barycentric.y < 0.0 || barycentric.y + barycentric.x > 1.0)
+        return false;
+		
+    t = dot(edge2, qvec) * invDet;
+    barycentric.z = 1.0 - barycentric.x - barycentric.y;
+		
+    return true;
+
+}
+
+interface iGeometry
+{
+    void Intersect(Ray ray, inout RayHit hit, inout float t);
+};
+
+struct MeshObject
+{
+    float4x4 modelMatrix;
+    int indexOffset;
+    int triangleCount;
+    int materialIndex;
+};
+
+StructuredBuffer<MeshObject> _MeshObjects;
+StructuredBuffer<float3> _Vertices;
+StructuredBuffer<int> _Indices;
+
+/*  
+ *  As the buffer cannot be easily converted into an array of mesh objects, we use this method to test intersection of all meshes.
+ */
+class Meshes : iGeometry
+{
+    
+    void Intersect(Ray ray, inout RayHit hit, inout float t)
+    {
+
+        uint numMeshes, stride;
+        _MeshObjects.GetDimensions(numMeshes, stride);
+        for (uint meshID = 0; meshID < numMeshes; meshID++)
+        {
+            MeshObject mesh = _MeshObjects[meshID];
+            for (int i = 0; i < mesh.triangleCount; i++)
+            {
+                float3 v1 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 0]], 1)).xyz;
+                float3 v2 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 1]], 1)).xyz;
+                float3 v3 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 2]], 1)).xyz;
+				
+                float3 barycentric;
+                float t_intersect;
+				
+                if (IntersectTriangle_MT97(ray, t_intersect, barycentric, v1, v2, v3))
+                {
+                    if (t_intersect > 0 && t_intersect < t)
+                    {
+                        t = t_intersect;
+                        hit.position = ray.origin + t * ray.direction;
+                        hit.matID = mesh.materialIndex;
+                        hit.normal = normalize(cross(v2 - v1, v3 - v1));
+                    }
+                }
+            }
+        }
+    }
+};
+
+//=======================================
+//=-------------------------------------=
+//=------------OBSOLETE-----------------=
+//=-------------------------------------=
+//=======================================
+class Ground : iGeometry
+{
+
+    int matID;
+
+    void Intersect(Ray ray, inout RayHit hit, inout float t)
+    {
+		//how long does it take to walk the height of the camera downwards
+        float t_intersect = -ray.origin.y / ray.direction.y;
+		//do we have an intersect and is it better?
+        if (t_intersect > 0 && t_intersect < t)
+        {
+			//apply hit
+            t = t_intersect;
+            hit.position = ray.origin + t * ray.direction;
+            hit.normal = float3(0.0f, 1.0f, 0.0f);
+            hit.matID = matID;
+        }
+    }
+};
+
+Ground CreateGround()
+{
+    Ground g;
+    g.matID = 1;
+    return g;
+}
+
+class Sphere : iGeometry
+{
+	
+    int matID;
+
+    float3 position;
+    float radius;
+
+    void Intersect(Ray ray, inout RayHit hit, inout float t)
+    {
+		// Calculate distance along the ray where the sphere is intersected
+        float3 d = ray.origin - position;
+        float p1 = -dot(ray.direction, d);
+        float p2sqr = p1 * p1 - dot(d, d) + radius * radius;
+        if (p2sqr < 0)
+            return;
+        float p2 = sqrt(p2sqr);
+        float t_intersect = p1 - p2 > 0 ? p1 - p2 : p1 + p2;
+        if (t_intersect > 0 && t_intersect < t)
+        {
+            t = t_intersect;
+            hit.position = ray.origin + t * ray.direction;
+            hit.normal = normalize(hit.position - position);
+            hit.matID = matID;
+        }
+    }
+};
+
+Sphere CreateSphere(float3 position, float radius)
+{
+    Sphere s;
+    s.position = position;
+    s.radius = radius;
+    s.matID = 0;
+    return s;
+}
+
+class Triangle : iGeometry
+{
+    int matID;
+	
+    float3 v1;
+    float3 v2;
+    float3 v3;
+	
+    void Intersect(Ray ray, inout RayHit hit, inout float t)
+    {
+        float t_intersect;
+        float3 barycentric;
+		
+        if (IntersectTriangle_MT97(ray, t_intersect, barycentric, v1, v2, v3))
+        {
+            if (t_intersect > 0 && t_intersect < t)
+            {
+                t = t_intersect;
+                hit.position = ray.origin + t * ray.direction;
+                hit.matID = matID;
+                hit.normal = normalize(cross(v2 - v1, v3 - v1));
+            }
+        }
+    }
+};
+
+Triangle CreateTriangle(float3 v1, float3 v2, float3 v3)
+{
+    Triangle t;
+    t.v1 = v1;
+    t.v2 = v2;
+    t.v3 = v3;
+    t.matID = 2;
+    return t;
+}
+
+class Mesh : iGeometry
+{
+    MeshObject mesh;
+    
+    void Intersect(Ray ray, inout RayHit hit, inout float t)
+    {
+        for (int i = 0; i < mesh.triangleCount; i++)
+        {
+            float3 v1 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 0]], 1)).xyz;
+            float3 v2 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 1]], 1)).xyz;
+            float3 v3 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 2]], 1)).xyz;
+            
+            float3 barycentric;
+            float t_intersect;
+            
+            if (IntersectTriangle_MT97(ray, t_intersect, barycentric, v1, v2, v3))
+            {
+                if (t_intersect > 0 && t_intersect < t)
+                {
+                    t = t_intersect;
+                    hit.position = ray.origin + t * ray.direction;
+                    hit.matID = mesh.materialIndex;
+                    hit.normal = normalize(cross(v2 - v1, v3 - v1));
+                }
+            }
+
+        }
+    }
+};
+
+Mesh CreateMesh(MeshObject object)
+{
+    Mesh m;
+    m.mesh = object;
+    return m;
+}
+#endif

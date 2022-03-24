@@ -2,6 +2,8 @@
 #pragma kernel CSMain
 
 #include "Defines.compute"
+#include "Materials.compute"
+#include "Geometries.compute"
 
 RWTexture2D<float4> Result;
 

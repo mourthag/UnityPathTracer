@@ -1,0 +1,119 @@
+#ifndef MATERIALS_H
+#define MATERIALS_H
+
+#include "Defines.compute"
+
+//=======================================
+//=-------------------------------------=
+//=------------Materials----------------=
+//=-------------------------------------=
+//=======================================
+
+interface iMaterial
+{
+    bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay);
+};
+
+
+struct MaterialBufferObject
+{
+    float3 albedo;
+    float3 specular;
+    float3 emissive;
+};
+
+
+StructuredBuffer<MaterialBufferObject> _Materials;
+
+class BufferMaterial
+{
+    bool Scatter(int matID, Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay)
+    {
+        MaterialBufferObject bufferObject = _Materials[matID];
+        
+        attenuation = 0;
+        scatteredRay.energy = 0;
+        
+        if (any(bufferObject.specular))
+        {
+            scatteredRay.origin = hit.position + hit.normal * 0.0001f;
+            if (rand() > 0.15f)
+                scatteredRay.direction = reflect(inRay.direction, hit.normal);
+            else
+                scatteredRay.direction = SampleHemisphere(hit.normal);
+            scatteredRay.energy = inRay.energy * bufferObject.specular;
+        }
+        if (any(bufferObject.emissive))
+        {
+            attenuation = bufferObject.emissive;
+        }
+        
+        return true;
+    }
+};
+//=======================================
+//=-------------------------------------=
+//=------------OBSOLETE-----------------=
+//=-------------------------------------=
+//=======================================
+class PerfectMirror : iMaterial
+{
+	
+    float3 albedo;
+    bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay)
+    {
+        scatteredRay.origin = hit.position + hit.normal * 0.0001f;
+        scatteredRay.direction = reflect(inRay.direction, hit.normal);
+        scatteredRay.energy = inRay.energy * albedo;
+        attenuation = float3(0.0f, 0.0f, 0.0f);
+        return true;
+    }
+};
+
+PerfectMirror CreateMirror(float3 color)
+{
+    PerfectMirror a;
+    a.albedo = color;
+    return a;
+}
+
+class LambertianDiffuse : iMaterial
+{
+    float3 albedo;
+
+    bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay)
+    {
+        scatteredRay.origin = hit.position + hit.normal * 0.0001f;
+        scatteredRay.direction = SampleHemisphere(hit.normal);
+        scatteredRay.energy = inRay.energy * 2.0f * albedo * saturate(dot(hit.normal, scatteredRay.direction));
+        attenuation = float3(0.0f, 0.0f, 0.0f);
+        return true;
+    }
+};
+
+LambertianDiffuse CreateLambertian(float3 color)
+{
+    LambertianDiffuse a;
+    a.albedo = color;
+    return a;
+}
+
+class Emissive : iMaterial
+{
+    float3 emissive;
+    
+    bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay)
+    {
+        scatteredRay.energy = float3(0.0f, 0.0f, 0.0f);
+        attenuation = emissive;
+        return true;
+    }
+};
+
+Emissive CreateEmissive(float3 color)
+{
+    Emissive a;
+    a.emissive = color;
+    return a;
+}
+#endif
