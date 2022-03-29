@@ -1,13 +1,15 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 public class PathTracer : MonoBehaviour
 {
     private static bool _meshObjectsNeedRebuilding = false;
     private static List<PathTracingObject> _ptObjects = new List<PathTracingObject>();
 
-    struct MeshObject
+    public struct MeshObject
     {
         public Matrix4x4 ModelMatrix;
         public int IndexOffset;
@@ -15,23 +17,34 @@ public class PathTracer : MonoBehaviour
         public int MaterialIndex;
     }
 
+    public struct BVHBufferNode
+    {
+        public Vector3 BoundsMaximum;
+        public Vector3 BoundsMinimum;
+        public int FirstPrimOffset, PrimCount, MeshIndex;
+        public int C0Index, C1Index;
+    }
+
     private static List<MeshObject> _meshObjects = new List<MeshObject>();
     private static List<Vector3> _vertices = new List<Vector3>();
     private static List<int> _indices = new List<int>();
     private static List<PathTracingObject.MaterialObject> _materialBufferObjects = new List<PathTracingObject.MaterialObject>();
+    private static List<BVHBufferNode> _bvhBufferNodes = new List<BVHBufferNode>();
 
     private ComputeBuffer _meshObjectsBuffer;
     private ComputeBuffer _verticesBuffer;
     private ComputeBuffer _indicesBuffer;
     private ComputeBuffer _materialBuffer;
+    private ComputeBuffer _bvhBuffer;
 
     public ComputeShader PathTracingShader;
 
     public Texture SkyboxTexture;
 
-
     public uint MaxSamples;
+    public bool UseBVH;
 
+    private BVHBuilder _bvhBuilder;
 
     private RenderTexture _target;
     private RenderTexture _prevResults;
@@ -39,6 +52,9 @@ public class PathTracer : MonoBehaviour
     private Camera _camera;
     private uint _currentSample = 0;
     private Material _addMaterial;
+
+    //Performance
+    private DateTime _startTime;
 
     public static void RegisterObject(PathTracingObject obj)
     {
@@ -65,6 +81,7 @@ public class PathTracer : MonoBehaviour
 
         _meshObjectsNeedRebuilding = false;
         _currentSample = 0;
+        _startTime = DateTime.Now;
         
 
         //Clear all buffers
@@ -107,6 +124,37 @@ public class PathTracer : MonoBehaviour
         CreateComputeBuffer<Vector3>(ref _verticesBuffer, _vertices, 12);
         CreateComputeBuffer<int>(ref _indicesBuffer, _indices, 4);
         CreateComputeBuffer<PathTracingObject.MaterialObject>(ref _materialBuffer, _materialBufferObjects, 36);
+        if (UseBVH)
+        {
+            CreateBVH();
+
+            CreateComputeBuffer<BVHBufferNode>(ref  _bvhBuffer, _bvhBufferNodes, 44);
+            CreateComputeBuffer<int>(ref _indicesBuffer, _bvhBuilder.GetOrderedIndices(), 4);
+        }
+
+    }
+
+    private void CreateBVH()
+    {
+        _bvhBufferNodes.Clear();
+        _bvhBuilder = new BVHBuilder(_meshObjects, _vertices, _indices);
+        _bvhBuilder.Build();
+
+        var bvhNodes = _bvhBuilder.GetBvhNodes();
+
+        foreach (var bvhNode in bvhNodes)
+        {
+            BVHBufferNode bufferNode = new BVHBufferNode();
+            bufferNode.BoundsMaximum = bvhNode.Bounds.Maximum;
+            bufferNode.BoundsMinimum = bvhNode.Bounds.Minimum;
+            bufferNode.PrimCount = bvhNode.PrimCount;
+            bufferNode.C0Index = bvhNode.Child0 == null ? -1 : bvhNode.C0Index;
+            bufferNode.C1Index = bvhNode.Child1 == null ? -1 : bvhNode.C1Index;
+            bufferNode.FirstPrimOffset = bvhNode.FirstPrimOffset;
+            bufferNode.MeshIndex = bvhNode.MeshIndex;
+
+            _bvhBufferNodes.Add(bufferNode);
+        }
     }
 
     private static void CreateComputeBuffer<T>(ref ComputeBuffer buffer, List<T> data, int stride)
@@ -172,6 +220,13 @@ public class PathTracer : MonoBehaviour
         SetComputeBuffer("_Vertices", _verticesBuffer);
         SetComputeBuffer("_Indices", _indicesBuffer);
         SetComputeBuffer("_Materials", _materialBuffer);
+
+        PathTracingShader.SetBool("_UseBVH", true);
+        if (UseBVH)
+        {
+            SetComputeBuffer("_BVHNodes", _bvhBuffer);
+            PathTracingShader.SetInt("RootNode", _bvhBuilder.GetRootNodeIndex());
+        }
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
@@ -183,6 +238,7 @@ public class PathTracer : MonoBehaviour
     private void Render(RenderTexture destination)
     {
 
+
         if (_currentSample >= MaxSamples)
             return;
 
@@ -192,7 +248,6 @@ public class PathTracer : MonoBehaviour
         
         //Update Shader uniforms
         SetShaderParameters();
-
 
         // Set the target and dispatch the compute shader
         uint groupSizeX, groupSizeY, groupSizeZ;
@@ -209,7 +264,9 @@ public class PathTracer : MonoBehaviour
 
         Graphics.Blit(_target, destination);
 
-        Debug.Log(_currentSample);
+        TimeSpan renderTime = DateTime.Now - _startTime;
+
+        Debug.Log("Sample " + _currentSample + " took " + renderTime.TotalSeconds + " seconds. This is " + _currentSample/renderTime.TotalSeconds + " spp per second!");
         _currentSample++;
     }
     private void InitRenderTexture()
@@ -243,5 +300,6 @@ public class PathTracer : MonoBehaviour
         _verticesBuffer?.Release();
         _meshObjectsBuffer?.Release();
         _materialBuffer?.Release();
+        _bvhBuffer?.Release();
     }
 }

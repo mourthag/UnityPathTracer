@@ -20,6 +20,8 @@ SamplerState sampler_SkyboxTexture;
 const static int MAX_DEPTH = 16;
 const static int NUM_GEOMETRIES = 1;
 
+bool _UseBVH;
+
 Ray CreateCameraRay(float2 uv)
 {
 	//extract translation component from camera to World
@@ -70,17 +72,18 @@ float3 Shade(inout Ray ray, RayHit hit, float t)
 	}
 }
 
-[numthreads(16, 16, 1)]
-void CSMain (uint3 groupid : SV_GroupThreadID, uint3 dpID : SV_DispatchThreadID)
+[numthreads(8, 8, 1)]
+void CSMain(uint3 groupid : SV_GroupThreadID, uint3 dpID : SV_DispatchThreadID)
 {
 	uint width, height;
-    Result.GetDimensions(width, height);
-    _Pixel = dpID.xy;
-    
-    Meshes m;
+	Result.GetDimensions(width, height);
+	_Pixel = dpID.xy;
+
+	Meshes m;
+	BVH b;
 	iGeometry geometries[NUM_GEOMETRIES];
-    geometries[0] = m;
-    
+
+	geometries[0] = b;
 
     // Transform pixel to [-1,1] range
     float2 uv = float2((dpID.xy + _PixelOffset) / float2(width, height) * 2.0f - 1.0f);

@@ -93,6 +93,113 @@ class Meshes : iGeometry
     }
 };
 
+struct BVHNode
+{
+    float3 BoundsMaximum;
+    float3 BoundsMinimum;
+    int FirstPrimOffset, PrimCount, MeshIndex;
+    int C0Index, C1Index;
+};
+
+StructuredBuffer<BVHNode> _BVHNodes;
+int RootNode;
+
+const static int STACKSIZE = 12;
+void Push(int newEntry, inout int stack[STACKSIZE], inout int currentSize)
+{
+    if (currentSize >= STACKSIZE)
+        return;
+    stack[currentSize] = newEntry;
+    currentSize++;
+}
+int Pop(inout int stack[STACKSIZE], inout int currentSize)
+{
+    if (currentSize <= 0)
+        return -1;
+    currentSize--;
+    return stack[currentSize];
+}
+
+class BVH : iGeometry
+{
+    bool IntersectAABB(float3 bbMin, float3 bbMax, Ray ray)
+    {
+        float tx1 = (bbMin.x - ray.origin.x) * ray.inv_dir.x;
+        float tx2 = (bbMax.x - ray.origin.x) * ray.inv_dir.x;
+
+        float tmin = min(tx1, tx2);
+        float tmax = max(tx1, tx2);
+
+        float ty1 = (bbMin.y - ray.origin.y) * ray.inv_dir.y;
+        float ty2 = (bbMax.y - ray.origin.y) * ray.inv_dir.y;
+
+        tmin = max(tmin, min(ty1, ty2));
+        tmax = min(tmax, max(ty1, ty2));
+
+        float tz1 = (bbMin.z - ray.origin.z) * ray.inv_dir.z;
+        float tz2 = (bbMax.z - ray.origin.z) * ray.inv_dir.z;
+
+        tmin = max(tmin, min(tz1, tz2));
+        tmax = min(tmax, max(tz1, tz2));
+
+        return (tmax >= tmin);
+    }
+
+    void Intersect(Ray ray, inout RayHit hit, inout float t)
+    {
+        uint count, stride;
+        _BVHNodes.GetDimensions(count, stride);
+
+        int nodeStack[STACKSIZE] = (int[STACKSIZE])0;
+        int stackSize = 0;
+        float t_int = 1.#INF;
+
+        //Intersect Root Node
+        Push(RootNode, nodeStack, stackSize);
+
+        while (stackSize > 0)
+        {
+            int nodeID = Pop(nodeStack, stackSize);
+            BVHNode node = _BVHNodes[nodeID];
+            //inner node
+            if (IntersectAABB(node.BoundsMinimum, node.BoundsMaximum, ray))
+            {
+
+                if (node.PrimCount > 0)
+                {
+                    //leaf Node 
+                    MeshObject mesh = _MeshObjects[node.MeshIndex];
+                    //TODO Triangle order fucked up?
+                    float3 v1 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[node.FirstPrimOffset + 0]], 1)).xyz;
+                    float3 v2 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[node.FirstPrimOffset + 1]], 1)).xyz;
+                    float3 v3 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[node.FirstPrimOffset + 2]], 1)).xyz;
+
+                    float3 barycentric;
+
+
+                    if (IntersectTriangle_MT97(ray, t_int, barycentric, v1, v2, v3))
+                    {
+                        if (t_int > 0 && t_int < t)
+                        {
+                            t = t_int;
+                            hit.position = ray.origin + t * ray.direction;
+                            hit.matID = mesh.materialIndex;
+                            hit.normal = normalize(cross(v2 - v1, v3 - v1));
+                        }
+                    }
+                }
+                else {
+                    //inner node
+                    Push(node.C0Index, nodeStack, stackSize);
+                    Push(node.C1Index, nodeStack, stackSize);
+                }
+            }
+
+            
+        }
+    }
+};
+
 //=======================================
 //=-------------------------------------=
 //=------------OBSOLETE-----------------=

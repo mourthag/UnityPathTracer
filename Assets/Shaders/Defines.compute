@@ -54,6 +54,7 @@ struct Ray {
 	float3 origin;
 	float3 direction;
 	float3 energy;
+	float3 inv_dir;
 };
 
 Ray CreateRay(float3 origin, float3 direction) {
@@ -61,6 +62,7 @@ Ray CreateRay(float3 origin, float3 direction) {
 	ray.origin = origin;
 	ray.direction = direction;
 	ray.energy = float3(1.0f, 1.0f, 1.0f);
+	ray.inv_dir = 1.0 / direction;
 	return ray;
 }
 
@@ -77,4 +79,5 @@ RayHit CreateRayHit() {
 	hit.matID = MAX_MATERIALS;
 	return hit;						  
 }
+
 #endif
