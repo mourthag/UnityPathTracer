@@ -1,12 +1,15 @@
 #ifndef DEFINES_H
 #define DEFINES_H
-const static int MAX_MATERIALS = 16;
 
 float2 _Pixel;
 float _Seed;
 
 static const float PI = 3.14159265f;
 static const float EPSILON = 1e-8;
+
+const static int MAX_DEPTH = 16;
+const static int NUM_GEOMETRIES = 1;
+const static int MAX_MATERIALS = 16;
 
 //=======================================
 //=-------------------------------------=
@@ -44,25 +47,33 @@ float3 SampleHemisphere(float3 normal)
 	return mul(tangentSpaceDir, GetTangentSpace(normal));
 }
 
+
 //=======================================
 //=-------------------------------------=
 //=---------------Rays------------------=
 //=-------------------------------------=
 //=======================================
 
+static const int RAYTYPE_PRIMARY = 0;
+static const int RAYTYPE_REFLECTION = 1;
+static const int RAYTYPE_TRANSMISSION = 2;
+static const int RAYTYPE_INVALID = -1;
+
 struct Ray {
 	float3 origin;
 	float3 direction;
 	float3 energy;
 	float3 inv_dir;
+	int type;
 };
 
-Ray CreateRay(float3 origin, float3 direction) {
+Ray CreateRay(float3 origin, float3 direction, int type) {
 	Ray ray;
 	ray.origin = origin;
 	ray.direction = direction;
 	ray.energy = float3(1.0f, 1.0f, 1.0f);
 	ray.inv_dir = 1.0 / direction;
+	ray.type = type;
 	return ray;
 }
 
@@ -78,6 +89,42 @@ RayHit CreateRayHit() {
 	hit.normal = float3(0.0f, 0.0f, 0.0f);
 	hit.matID = MAX_MATERIALS;
 	return hit;						  
+}
+
+static const int RAYBUFFER_SIZE = MAX_DEPTH * 3;
+class RayBuffer {
+
+	Ray buffer[RAYBUFFER_SIZE];
+	int currentSize;
+
+	void Push(Ray newEntry)
+	{
+		if (currentSize >= RAYBUFFER_SIZE)
+			return;
+		buffer[currentSize] = newEntry;
+		currentSize++;
+	}
+
+	Ray Pop()
+	{
+		if (currentSize <= 0)
+			return CreateRay((float3)0, (float3)0, RAYTYPE_INVALID);
+		currentSize--;
+		return buffer[currentSize];
+	}
+
+	bool isEmpty()
+	{
+		return currentSize == 0;
+	}
+};
+
+RayBuffer CreateRayBuffer() {
+	RayBuffer b;
+	b.buffer = (Ray[RAYBUFFER_SIZE])0;
+	b.currentSize = 0;
+
+	return b;
 }
 
 #endif

@@ -17,9 +17,6 @@ float2 _PixelOffset;
 Texture2D<float4> _SkyboxTexture;
 SamplerState sampler_SkyboxTexture;
 
-const static int MAX_DEPTH = 16;
-const static int NUM_GEOMETRIES = 1;
-
 bool _UseBVH;
 
 Ray CreateCameraRay(float2 uv)
@@ -34,7 +31,8 @@ Ray CreateCameraRay(float2 uv)
 	//normalize the direction
 	direction = normalize(direction);
 
-	return CreateRay(origin, direction);
+	Ray ray = CreateRay(origin, direction, RAYTYPE_PRIMARY);
+	return ray;
 }
 
 void Trace(Ray ray, iGeometry geometries[NUM_GEOMETRIES], inout RayHit bestHit, inout float t)
@@ -47,17 +45,17 @@ void Trace(Ray ray, iGeometry geometries[NUM_GEOMETRIES], inout RayHit bestHit, 
 	}
 }
 
-float3 Shade(inout Ray ray, RayHit hit, float t)
+float3 Shade(inout Ray ray, RayHit hit, float t, inout RayBuffer rb)
 {	
 	if (hit.matID < MAX_MATERIALS)
 	{
-		Ray scattered = CreateRay(float3(0.0f, 0.0f, 0.0f), float3(0.0f, 0.0f, 0.0f));
+		Ray scattered = CreateRay(float3(0.0f, 0.0f, 0.0f), float3(0.0f, 0.0f, 0.0f), RAYTYPE_REFLECTION);
 		float3 attenuation = float3(0.0f, 0.0f, 0.0f);
         
         BufferMaterial mat;
         mat.Scatter(hit.matID, ray, hit, attenuation, scattered);
 
-		ray = scattered;
+		rb.Push(scattered);
 
 		return attenuation;
 	}
@@ -89,16 +87,20 @@ void CSMain(uint3 groupid : SV_GroupThreadID, uint3 dpID : SV_DispatchThreadID)
     float2 uv = float2((dpID.xy + _PixelOffset) / float2(width, height) * 2.0f - 1.0f);
 
 	// Get a ray for the UVs
-	Ray ray = CreateCameraRay(uv);
+	//Ray ray = CreateCameraRay(uv);
 	RayHit hit = CreateRayHit();
+	RayBuffer rb = CreateRayBuffer();
+	rb.Push(CreateCameraRay(uv));
+
 	float t = 1.#INF;	
         
     //Trace and Shade 
     float3 result = float3(0.0f, 0.0f, 0.0f);
-	for (int i = 0; i < MAX_DEPTH; i++)
+	while (rb.currentSize > 0)
 	{
+		Ray ray = rb.Pop();
 		Trace(ray, geometries, hit, t);
-        result += ray.energy * Shade(ray, hit, t);
+        result += ray.energy * Shade(ray, hit, t, rb);
 		if (!any(ray.energy))
 			break;
 	}

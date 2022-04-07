@@ -37,10 +37,7 @@ class BufferMaterial
         if (any(bufferObject.specular))
         {
             scatteredRay.origin = hit.position + hit.normal * 0.0001f;
-            if (rand() > 0.15f)
-                scatteredRay.direction = reflect(inRay.direction, hit.normal);
-            else
-                scatteredRay.direction = SampleHemisphere(hit.normal);
+            scatteredRay.direction = reflect(inRay.direction, hit.normal);
             scatteredRay.energy = inRay.energy * bufferObject.specular;
         }
         if (any(bufferObject.emissive))
