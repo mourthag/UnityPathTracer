@@ -55,7 +55,8 @@ float3 Shade(inout Ray ray, RayHit hit, float t, inout RayBuffer rb)
         BufferMaterial mat;
         mat.Scatter(hit.matID, ray, hit, attenuation, scattered);
 
-		rb.Push(scattered);
+		if(scattered.type != RAYTYPE_INVALID && any(scattered.energy))
+			rb.Push(scattered);
 
 		return attenuation;
 	}
@@ -96,13 +97,12 @@ void CSMain(uint3 groupid : SV_GroupThreadID, uint3 dpID : SV_DispatchThreadID)
         
     //Trace and Shade 
     float3 result = float3(0.0f, 0.0f, 0.0f);
+	[unroll(10)]
 	while (rb.currentSize > 0)
 	{
 		Ray ray = rb.Pop();
 		Trace(ray, geometries, hit, t);
         result += ray.energy * Shade(ray, hit, t, rb);
-		if (!any(ray.energy))
-			break;
 	}
 
     //write result

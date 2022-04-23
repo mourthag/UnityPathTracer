@@ -67,6 +67,16 @@ struct Ray {
 	int type;
 };
 
+Ray CreateInvalidRay() {
+	Ray ray;
+	ray.origin = (float3)0;
+	ray.direction = (float3)0;
+	ray.inv_dir = (float3)0;
+	ray.energy = (float3)0;
+	ray.type = RAYTYPE_INVALID;
+	return ray;
+}
+
 Ray CreateRay(float3 origin, float3 direction, int type) {
 	Ray ray;
 	ray.origin = origin;
@@ -107,9 +117,12 @@ class RayBuffer {
 
 	Ray Pop()
 	{
-		if (currentSize <= 0)
-			return CreateRay((float3)0, (float3)0, RAYTYPE_INVALID);
-		currentSize--;
+		currentSize--;		
+		if (currentSize < 0)
+		{
+			currentSize = 0;
+			return CreateInvalidRay();
+		}
 		return buffer[currentSize];
 	}
 
