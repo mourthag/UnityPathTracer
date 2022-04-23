@@ -65,6 +65,11 @@ struct Ray {
 	float3 energy;
 	float3 inv_dir;
 	int type;
+
+	bool isInvalid()
+	{
+		return type == RAYTYPE_INVALID || !any(energy);
+	}
 };
 
 Ray CreateInvalidRay() {
@@ -91,6 +96,7 @@ struct RayHit {
 	float3 position;
 	float3 normal;
 	int matID;
+	bool isFrontFace;
 };
 
 RayHit CreateRayHit() {
@@ -109,7 +115,7 @@ class RayBuffer {
 
 	void Push(Ray newEntry)
 	{
-		if (currentSize >= RAYBUFFER_SIZE)
+		if (newEntry.isInvalid() || currentSize >= RAYBUFFER_SIZE)
 			return;
 		buffer[currentSize] = newEntry;
 		currentSize++;

@@ -185,6 +185,7 @@ class BVH : iGeometry
                             hit.position = ray.origin + t * ray.direction;
                             hit.matID = mesh.materialIndex;
                             hit.normal = normalize(cross(v2 - v1, v3 - v1));
+                            hit.isFrontFace = dot(hit.normal, ray.direction) < 0;
                         }
                     }
                 }

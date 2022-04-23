@@ -49,14 +49,10 @@ float3 Shade(inout Ray ray, RayHit hit, float t, inout RayBuffer rb)
 {	
 	if (hit.matID < MAX_MATERIALS)
 	{
-		Ray scattered = CreateRay(float3(0.0f, 0.0f, 0.0f), float3(0.0f, 0.0f, 0.0f), RAYTYPE_REFLECTION);
 		float3 attenuation = float3(0.0f, 0.0f, 0.0f);
         
         BufferMaterial mat;
-        mat.Scatter(hit.matID, ray, hit, attenuation, scattered);
-
-		if(scattered.type != RAYTYPE_INVALID && any(scattered.energy))
-			rb.Push(scattered);
+        mat.Scatter(hit.matID, ray, hit, attenuation, rb);
 
 		return attenuation;
 	}

@@ -5,13 +5,35 @@
 
 //=======================================
 //=-------------------------------------=
+//=----------Util Methods---------------=
+//=-------------------------------------=
+//=======================================
+
+float3 refract(float3 inc_dir, float3 normal, float ior_qout)
+{
+    float cos_theta = min(dot(-inc_dir, normal), 1.0);
+    float3 r_out_perp = ior_qout * (inc_dir + cos_theta * normal);
+    float3 r_out_parallel = -sqrt(abs(1.0 - dot(r_out_perp, r_out_perp))) * normal;
+    return r_out_perp + r_out_parallel;
+}
+
+float Schlicks_Approx(float cosine, float refractive_index)
+{
+    float r0 = (1.0 - refractive_index) / (1.0 + refractive_index);
+    r0 = r0 * r0;
+    return r0 + (1.0 - r0) * pow(1.0 - cosine, 5.0);
+}
+
+
+//=======================================
+//=-------------------------------------=
 //=------------Materials----------------=
 //=-------------------------------------=
 //=======================================
 
 interface iMaterial
 {
-    bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay);
+    bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout RayBuffer rb);
 };
 
 
@@ -20,6 +42,8 @@ struct MaterialBufferObject
     float3 albedo;
     float3 specular;
     float3 emissive;
+    float3 transmission;
+    float ior;
 };
 
 
@@ -27,18 +51,47 @@ StructuredBuffer<MaterialBufferObject> _Materials;
 
 class BufferMaterial
 {
-    bool Scatter(int matID, Ray inRay, RayHit hit, inout float3 attenuation, inout Ray scatteredRay)
+    bool Scatter(int matID, Ray inRay, RayHit hit, inout float3 attenuation, inout RayBuffer rb)
     {
         MaterialBufferObject bufferObject = _Materials[matID];
         
         attenuation = 0;
-        scatteredRay.energy = 0;
         
+        //TODO create new rays and push them to the buffer
         if (any(bufferObject.specular))
         {
-            scatteredRay.origin = hit.position + hit.normal * 0.0001f;
-            scatteredRay.direction = reflect(inRay.direction, hit.normal);
-            scatteredRay.energy = inRay.energy * bufferObject.specular;
+            float3 rayOrigin = hit.position + hit.normal * 0.0001f;
+            float3 rayDirection = reflect(inRay.direction, hit.normal);
+            Ray directReflectionRay = CreateRay(rayOrigin, rayDirection, RAYTYPE_REFLECTION);
+            directReflectionRay.energy = inRay.energy * bufferObject.specular;
+            rb.Push(directReflectionRay);
+        }
+        else if (any(bufferObject.transmission))
+        {
+            float3 rayOrigin = hit.position - hit.normal * 0.0001f;
+
+            float refractive_index = hit.isFrontFace ? 1.0 / bufferObject.ior : bufferObject.ior;
+            float cos_theta = min(dot(-inRay.direction, hit.normal), 1.0);
+            float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+
+            bool cannot_refract = sin_theta * refractive_index > 1.0;
+            float Schlick_term = Schlicks_Approx(cos_theta, refractive_index);
+
+            float3 rayDirection;
+
+            if (cannot_refract || Schlick_term > rand())
+            {
+                rayDirection = reflect(inRay.direction, hit.normal);
+            }
+            else
+            {
+                rayDirection = refract(inRay.direction, hit.normal, refractive_index);
+            }
+
+
+            Ray transmissionRay = CreateRay(rayOrigin, rayDirection, RAYTYPE_TRANSMISSION);
+            transmissionRay.energy = inRay.energy * bufferObject.transmission;
+            rb.Push(transmissionRay);
         }
         if (any(bufferObject.emissive))
         {
@@ -53,7 +106,7 @@ class BufferMaterial
 //=------------OBSOLETE-----------------=
 //=-------------------------------------=
 //=======================================
-class PerfectMirror : iMaterial
+/*class PerfectMirror : iMaterial
 {
 	
     float3 albedo;
@@ -112,5 +165,5 @@ Emissive CreateEmissive(float3 color)
     Emissive a;
     a.emissive = color;
     return a;
-}
+}*/
 #endif

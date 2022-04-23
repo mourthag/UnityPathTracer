@@ -123,7 +123,7 @@ public class PathTracer : MonoBehaviour
         CreateComputeBuffer<MeshObject>(ref _meshObjectsBuffer, _meshObjects, 76);
         CreateComputeBuffer<Vector3>(ref _verticesBuffer, _vertices, 12);
         CreateComputeBuffer<int>(ref _indicesBuffer, _indices, 4);
-        CreateComputeBuffer<PathTracingObject.MaterialObject>(ref _materialBuffer, _materialBufferObjects, 36);
+        CreateComputeBuffer<PathTracingObject.MaterialObject>(ref _materialBuffer, _materialBufferObjects, 52);
         if (UseBVH)
         {
             CreateBVH();
@@ -137,6 +137,7 @@ public class PathTracer : MonoBehaviour
     private void CreateBVH()
     {
         _bvhBufferNodes.Clear();
+        Debug.Log("Total triangles: " + _indices.Count / 3);
         _bvhBuilder = new BVHBuilder(_meshObjects, _vertices, _indices);
         _bvhBuilder.Build();
 
