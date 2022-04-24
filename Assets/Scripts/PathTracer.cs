@@ -12,6 +12,7 @@ public class PathTracer : MonoBehaviour
     public struct MeshObject
     {
         public Matrix4x4 ModelMatrix;
+        public Matrix4x4 NormalMatrix;
         public int IndexOffset;
         public int TriangleCount;
         public int MaterialIndex;
@@ -27,12 +28,14 @@ public class PathTracer : MonoBehaviour
 
     private static List<MeshObject> _meshObjects = new List<MeshObject>();
     private static List<Vector3> _vertices = new List<Vector3>();
+    private static List<Vector3> _normals = new List<Vector3>();
     private static List<int> _indices = new List<int>();
     private static List<PathTracingObject.MaterialObject> _materialBufferObjects = new List<PathTracingObject.MaterialObject>();
     private static List<BVHBufferNode> _bvhBufferNodes = new List<BVHBufferNode>();
 
     private ComputeBuffer _meshObjectsBuffer;
     private ComputeBuffer _verticesBuffer;
+    private ComputeBuffer _normalsBuffer;
     private ComputeBuffer _indicesBuffer;
     private ComputeBuffer _materialBuffer;
     private ComputeBuffer _bvhBuffer;
@@ -82,7 +85,7 @@ public class PathTracer : MonoBehaviour
     {
         if (!_meshObjectsNeedRebuilding)
             return;
-
+        //TODO export reset method
         _meshObjectsNeedRebuilding = false;
         _currentSample = 0;
         _wasImageSaved = false;
@@ -92,6 +95,7 @@ public class PathTracer : MonoBehaviour
         //Clear all buffers
         _meshObjects.Clear();
         _vertices.Clear();
+        _normals.Clear();
         _indices.Clear();
 
         foreach (var ptObject in _ptObjects)
@@ -100,9 +104,10 @@ public class PathTracer : MonoBehaviour
             var meshRenderer = ptObject.GetComponent<MeshRenderer>();
             var mesh = ptObject.GetComponent<MeshFilter>().sharedMesh;
 
-            //Add vertices and remember previous count to offset the indices
+            //Add vertices and normals and remember previous count to offset the indices
             int firstVertex = _vertices.Count;
             _vertices.AddRange(mesh.vertices);
+            _normals.AddRange(mesh.normals);
 
             //Get the index offset and add vertex indices shifted by the current vertex offset
             int firstIndex = _indices.Count;
@@ -113,12 +118,15 @@ public class PathTracer : MonoBehaviour
             int matIndex = _materialBufferObjects.Count();
             _materialBufferObjects.Add(ptObject.Material);
 
+            Matrix4x4 normalMat = meshRenderer.localToWorldMatrix.inverse.transpose;
+
             //TODO more eloquent material parsing and submeshes
 
             //Create an object to boundle information of a Mesh and add it
             MeshObject meshObject = new MeshObject
             {
                 ModelMatrix = meshRenderer.localToWorldMatrix,
+                NormalMatrix = normalMat,
                 IndexOffset = firstIndex,
                 TriangleCount = indices.Length / 3,
                 MaterialIndex = matIndex
@@ -127,8 +135,9 @@ public class PathTracer : MonoBehaviour
 
         }
 
-        CreateComputeBuffer<MeshObject>(ref _meshObjectsBuffer, _meshObjects, 76);
+        CreateComputeBuffer<MeshObject>(ref _meshObjectsBuffer, _meshObjects, 140);
         CreateComputeBuffer<Vector3>(ref _verticesBuffer, _vertices, 12);
+        CreateComputeBuffer<Vector3>(ref _normalsBuffer, _normals, 12);
         CreateComputeBuffer<int>(ref _indicesBuffer, _indices, 4);
         CreateComputeBuffer<PathTracingObject.MaterialObject>(ref _materialBuffer, _materialBufferObjects, 52);
         if (UseBVH)
@@ -226,6 +235,7 @@ public class PathTracer : MonoBehaviour
 
         SetComputeBuffer("_MeshObjects", _meshObjectsBuffer);
         SetComputeBuffer("_Vertices", _verticesBuffer);
+        SetComputeBuffer("_Normals", _normalsBuffer);
         SetComputeBuffer("_Indices", _indicesBuffer);
         SetComputeBuffer("_Materials", _materialBuffer);
 
@@ -317,6 +327,7 @@ public class PathTracer : MonoBehaviour
     {
         _indicesBuffer?.Release();
         _verticesBuffer?.Release();
+        _normalsBuffer?.Release();
         _meshObjectsBuffer?.Release();
         _materialBuffer?.Release();
         _bvhBuffer?.Release();

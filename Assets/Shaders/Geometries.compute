@@ -46,6 +46,7 @@ interface iGeometry
 struct MeshObject
 {
     float4x4 modelMatrix;
+    float4x4 normalMatrix;
     int indexOffset;
     int triangleCount;
     int materialIndex;
@@ -53,6 +54,7 @@ struct MeshObject
 
 StructuredBuffer<MeshObject> _MeshObjects;
 StructuredBuffer<float3> _Vertices;
+StructuredBuffer<float3> _Normals;
 StructuredBuffer<int> _Indices;
 
 /*  
@@ -174,6 +176,11 @@ class BVH : iGeometry
                     float3 v2 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[node.FirstPrimOffset + 1]], 1)).xyz;
                     float3 v3 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[node.FirstPrimOffset + 2]], 1)).xyz;
 
+
+                    float3 n1 = mul(mesh.normalMatrix, float4(_Normals[_Indices[node.FirstPrimOffset + 0]], 1)).xyz;
+                    float3 n2 = mul(mesh.normalMatrix, float4(_Normals[_Indices[node.FirstPrimOffset + 1]], 1)).xyz;
+                    float3 n3 = mul(mesh.normalMatrix, float4(_Normals[_Indices[node.FirstPrimOffset + 2]], 1)).xyz;
+
                     float3 barycentric;
 
 
@@ -184,8 +191,9 @@ class BVH : iGeometry
                             t = t_int;
                             hit.position = ray.origin + t * ray.direction;
                             hit.matID = mesh.materialIndex;
-                            hit.normal = normalize(cross(v2 - v1, v3 - v1));
-                            hit.isFrontFace = dot(hit.normal, ray.direction) < 0;
+                            //TODO barycentric normal
+                            hit.normal = normalize(barycentric.x * n1 + barycentric.y * n2 + barycentric.z * n3);
+                            hit.isFrontFace = dot(hit.normal, -ray.direction) > 0;
                         }
                     }
                 }
