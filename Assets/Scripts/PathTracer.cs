@@ -53,6 +53,10 @@ public class PathTracer : MonoBehaviour
     private uint _currentSample = 0;
     private Material _addMaterial;
 
+    //Output image
+    public bool SaveAsPNG;
+    private bool _wasImageSaved;
+
     //Performance
     private DateTime _startTime;
 
@@ -81,6 +85,7 @@ public class PathTracer : MonoBehaviour
 
         _meshObjectsNeedRebuilding = false;
         _currentSample = 0;
+        _wasImageSaved = false;
         _startTime = DateTime.Now;
         
 
@@ -107,6 +112,8 @@ public class PathTracer : MonoBehaviour
             //Add material and get its index
             int matIndex = _materialBufferObjects.Count();
             _materialBufferObjects.Add(ptObject.Material);
+
+            //TODO more eloquent material parsing and submeshes
 
             //Create an object to boundle information of a Mesh and add it
             MeshObject meshObject = new MeshObject
@@ -234,6 +241,17 @@ public class PathTracer : MonoBehaviour
     {
         RebuildMeshObjectBuffers();
         Render(destination);
+
+        if(_currentSample >= MaxSamples && !_wasImageSaved)
+        {
+            RenderTexture.active = destination;
+            Texture2D imgTex = new Texture2D(Screen.width, Screen.height);
+            imgTex.ReadPixels(new Rect(0, 0, Screen.width, Screen.height), 0, 0);
+            imgTex.Apply();
+            byte[] bytes = imgTex.EncodeToPNG();
+            System.IO.File.WriteAllBytes(Application.dataPath + "/RenderOutput.png", bytes);
+            _wasImageSaved = true;
+        }
     }
 
     private void Render(RenderTexture destination)
