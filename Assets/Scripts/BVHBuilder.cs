@@ -198,6 +198,7 @@ public class BVHBuilder
                 for (int i = start; i < end; ++i)
                 {
                     int primNum = _primitiveInfos[i].PrimIndex;
+                    
                     orderedIndices.Add(_indices[primNum]);
                     orderedIndices.Add(_indices[primNum + 1]);
                     orderedIndices.Add(_indices[primNum + 2]);
@@ -221,10 +222,9 @@ public class BVHBuilder
 
     public void Build()
     {
+        _orderedIndices.Clear();
         _rootNode = RecursiveBuild(0, _nPrims, _orderedIndices);
         _rootIndex = RegisterNode(_rootNode);
-        Debug.Log(_rootNode.Bounds.Maximum);
-        Debug.Log(_rootNode.Bounds.Minimum);
     }
 
     public List<BVHNode> GetBvhNodes()

@@ -3,6 +3,7 @@
 
 #include "Defines.compute"
 
+
 //=======================================
 //=-------------------------------------=
 //=------------Geometries---------------=
@@ -68,6 +69,9 @@ class Meshes : iGeometry
 
         uint numMeshes, stride;
         _MeshObjects.GetDimensions(numMeshes, stride);
+
+        float t_int = 1.#INF;
+
         for (uint meshID = 0; meshID < numMeshes; meshID++)
         {
             MeshObject mesh = _MeshObjects[meshID];
@@ -76,24 +80,31 @@ class Meshes : iGeometry
                 float3 v1 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 0]], 1)).xyz;
                 float3 v2 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 1]], 1)).xyz;
                 float3 v3 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 2]], 1)).xyz;
+
+
+                float3 n1 = mul(mesh.normalMatrix, float4(_Normals[_Indices[mesh.indexOffset + i * 3 + 0]], 1)).xyz;
+                float3 n2 = mul(mesh.normalMatrix, float4(_Normals[_Indices[mesh.indexOffset + i * 3 + 1]], 1)).xyz;
+                float3 n3 = mul(mesh.normalMatrix, float4(_Normals[_Indices[mesh.indexOffset + i * 3 + 2]], 1)).xyz;
 				
                 float3 barycentric;
-                float t_intersect;
 				
-                if (IntersectTriangle_MT97(ray, t_intersect, barycentric, v1, v2, v3))
+                if (IntersectTriangle_MT97(ray, t_int, barycentric, v1, v2, v3))
                 {
-                    if (t_intersect > 0 && t_intersect < t)
+                    if (t_int > 0 && t_int < t)
                     {
-                        t = t_intersect;
+                        t = t_int;
                         hit.position = ray.origin + t * ray.direction;
                         hit.matID = mesh.materialIndex;
-                        hit.normal = normalize(cross(v2 - v1, v3 - v1));
+                        hit.normal = normalize(barycentric.x * n1 + barycentric.y * n2 + barycentric.z * n3);
+                        hit.isFrontFace = dot(hit.normal, -ray.direction) > 0;
                     }
                 }
             }
         }
     }
 };
+
+#ifdef USE_BVH
 
 struct BVHNode
 {
@@ -106,7 +117,7 @@ struct BVHNode
 StructuredBuffer<BVHNode> _BVHNodes;
 int RootNode;
 
-const static int STACKSIZE = 12;
+const static int STACKSIZE = 16;
 void Push(int newEntry, inout int stack[STACKSIZE], inout int currentSize)
 {
     if (currentSize >= STACKSIZE)
@@ -167,35 +178,40 @@ class BVH : iGeometry
             if (IntersectAABB(node.BoundsMinimum, node.BoundsMaximum, ray))
             {
 
+                
                 if (node.PrimCount > 0)
                 {
-                    //leaf Node 
-                    MeshObject mesh = _MeshObjects[node.MeshIndex];
-                    //TODO Triangle order fucked up?
-                    float3 v1 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[node.FirstPrimOffset + 0]], 1)).xyz;
-                    float3 v2 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[node.FirstPrimOffset + 1]], 1)).xyz;
-                    float3 v3 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[node.FirstPrimOffset + 2]], 1)).xyz;
+                    //leaf Node -> iterate over Prims
+                    for (int i = 0; i < node.PrimCount; i++)
+                    {                    
+                        MeshObject mesh = _MeshObjects[node.MeshIndex];
+                        //TODO Triangle order fucked up?
+                        float3 v1 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[node.FirstPrimOffset + 3 * i + 0]], 1)).xyz;
+                        float3 v2 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[node.FirstPrimOffset + 3 * i + 1]], 1)).xyz;
+                        float3 v3 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[node.FirstPrimOffset + 3 * i + 2]], 1)).xyz;
 
 
-                    float3 n1 = mul(mesh.normalMatrix, float4(_Normals[_Indices[node.FirstPrimOffset + 0]], 1)).xyz;
-                    float3 n2 = mul(mesh.normalMatrix, float4(_Normals[_Indices[node.FirstPrimOffset + 1]], 1)).xyz;
-                    float3 n3 = mul(mesh.normalMatrix, float4(_Normals[_Indices[node.FirstPrimOffset + 2]], 1)).xyz;
+                        float3 n1 = mul(mesh.normalMatrix, float4(_Normals[_Indices[node.FirstPrimOffset + 3 * i + 0]], 1)).xyz;
+                        float3 n2 = mul(mesh.normalMatrix, float4(_Normals[_Indices[node.FirstPrimOffset + 3 * i + 1]], 1)).xyz;
+                        float3 n3 = mul(mesh.normalMatrix, float4(_Normals[_Indices[node.FirstPrimOffset + 3 * i + 2]], 1)).xyz;
 
-                    float3 barycentric;
+                        float3 barycentric;
 
 
-                    if (IntersectTriangle_MT97(ray, t_int, barycentric, v1, v2, v3))
-                    {
-                        if (t_int > 0 && t_int < t)
+                        if (IntersectTriangle_MT97(ray, t_int, barycentric, v1, v2, v3))
                         {
-                            t = t_int;
-                            hit.position = ray.origin + t * ray.direction;
-                            hit.matID = mesh.materialIndex;
-                            //TODO barycentric normal
-                            hit.normal = normalize(barycentric.x * n1 + barycentric.y * n2 + barycentric.z * n3);
-                            hit.isFrontFace = dot(hit.normal, -ray.direction) > 0;
+                            if (t_int > 0 && t_int < t)
+                            {
+                                t = t_int;
+                                hit.position = ray.origin + t * ray.direction;
+                                hit.matID = mesh.materialIndex;
+                                hit.normal = normalize(barycentric.x * n1 + barycentric.y * n2 + barycentric.z * n3);
+                                hit.isFrontFace = dot(hit.normal, -ray.direction) > 0;
+                            }
                         }
+
                     }
+
                 }
                 else {
                     //inner node
@@ -204,11 +220,11 @@ class BVH : iGeometry
                 }
             }
 
-            
+
         }
     }
 };
-
+#endif
 //=======================================
 //=-------------------------------------=
 //=------------OBSOLETE-----------------=

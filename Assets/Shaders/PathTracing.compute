@@ -1,4 +1,6 @@
 // Each #kernel tells which function to compile; you can have many kernels
+#pragma multi_compile_local __ USE_BVH
+
 #pragma kernel CSMain
 
 #include "Defines.compute"
@@ -16,8 +18,6 @@ float2 _PixelOffset;
 
 Texture2D<float4> _SkyboxTexture;
 SamplerState sampler_SkyboxTexture;
-
-bool _UseBVH;
 
 Ray CreateCameraRay(float2 uv)
 {
@@ -74,13 +74,18 @@ void CSMain(uint3 groupid : SV_GroupThreadID, uint3 dpID : SV_DispatchThreadID)
 	Result.GetDimensions(width, height);
 	_Pixel = dpID.xy;
 
-	Meshes m;
-	BVH b;
+
 	iGeometry geometries[NUM_GEOMETRIES];
 
-	geometries[0] = b;
+#ifdef USE_BVH
+		BVH b;
+		geometries[0] = b;
+#else
+		Meshes m;
+		geometries[0] = m;
+#endif
 
-    // Transform pixel to [-1,1] range
+	// Transform pixel to [-1,1] range
     float2 uv = float2((dpID.xy + _PixelOffset) / float2(width, height) * 2.0f - 1.0f);
 
 	// Get a ray for the UVs

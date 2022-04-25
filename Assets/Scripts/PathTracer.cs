@@ -148,6 +148,12 @@ public class PathTracer : MonoBehaviour
             CreateComputeBuffer<int>(ref _indicesBuffer, _bvhBuilder.GetOrderedIndices(), 4);
         }
 
+
+        TimeSpan renderTime = DateTime.Now - _startTime;
+        Debug.Log("Scene/BVH construction took " + renderTime.TotalSeconds + " seconds!");
+
+        _startTime = DateTime.Now;
+
     }
 
     private void CreateBVH()
@@ -239,12 +245,14 @@ public class PathTracer : MonoBehaviour
         SetComputeBuffer("_Indices", _indicesBuffer);
         SetComputeBuffer("_Materials", _materialBuffer);
 
-        PathTracingShader.SetBool("_UseBVH", true);
         if (UseBVH)
         {
+            PathTracingShader.EnableKeyword("USE_BVH");
             SetComputeBuffer("_BVHNodes", _bvhBuffer);
             PathTracingShader.SetInt("RootNode", _bvhBuilder.GetRootNodeIndex());
         }
+        else
+            PathTracingShader.DisableKeyword("USE_BVH");
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
@@ -295,7 +303,7 @@ public class PathTracer : MonoBehaviour
 
         TimeSpan renderTime = DateTime.Now - _startTime;
 
-        Debug.Log("Sample " + _currentSample + " took " + renderTime.TotalSeconds + " seconds. This is " + _currentSample/renderTime.TotalSeconds + " spp per second!");
+        Debug.Log("Sample " + _currentSample + " took " + renderTime.TotalSeconds + " seconds. This is " + (_currentSample + 1)/renderTime.TotalSeconds + " spp per second!");
         _currentSample++;
     }
     private void InitRenderTexture()
