@@ -51,27 +51,55 @@ StructuredBuffer<MaterialBufferObject> _Materials;
 
 class BufferMaterial
 {
+    void EvaluatePhong(const MaterialBufferObject mat, const Ray inRay, const RayHit hit, inout RayBuffer rb)
+    {
+        const float sum = energy(mat.specular) + energy(mat.albedo);
+        const float specChance = energy(mat.specular) / sum;
+        const float diffChance = energy(mat.albedo) / sum;
+
+        const float3 rayOrigin = hit.position + hit.normal * 0.0001f;
+        const float3 reflected = reflect(inRay.direction, hit.normal);
+        Ray reflectionRay;
+
+        if (rand() < specChance) {
+            //specular reflection
+            const float alpha = 300000.f;
+            const float scaling = (alpha + 2) / (alpha + 1);
+
+            const float3 rayDirection = SampleHemisphere(reflected, alpha);
+            reflectionRay = CreateRay(rayOrigin, rayDirection, RAYTYPE_REFLECTION);
+
+
+            reflectionRay.energy = inRay.energy * mat.specular / specChance * sdot(hit.normal, rayDirection, scaling);
+        }
+        else {
+            //diffuse reflection
+            const float3 rayDirection = SampleHemisphere(hit.normal, 1.0f);
+            reflectionRay = CreateRay(rayOrigin, rayDirection, RAYTYPE_REFLECTION);
+            reflectionRay.energy = inRay.energy * mat.albedo / diffChance;
+        }
+
+        rb.Push(reflectionRay);
+    }
+
     bool Scatter(int matID, Ray inRay, RayHit hit, inout float3 attenuation, inout RayBuffer rb)
     {
-        MaterialBufferObject bufferObject = _Materials[matID];
+        MaterialBufferObject mat = _Materials[matID];
         
         attenuation = 0;
         
-        //TODO create new rays and push them to the buffer
-        if (any(bufferObject.specular))
+        //TODO uniform sampling and brdf evaluation
+
+        if (any(mat.specular) || any(mat.albedo))
         {
-            float3 rayOrigin = hit.position + hit.normal * 0.0001f;
-            float3 rayDirection = reflect(inRay.direction, hit.normal);
-            Ray directReflectionRay = CreateRay(rayOrigin, rayDirection, RAYTYPE_REFLECTION);
-            directReflectionRay.energy = inRay.energy * bufferObject.specular;
-            rb.Push(directReflectionRay);
+            EvaluatePhong(mat, inRay, hit, rb);
         }
-        else if (any(bufferObject.transmission))
+        else if (any(mat.transmission))
         {
             float3 rayOrigin = hit.position - hit.normal * 0.0001f;
 
-            float refractive_index = hit.isFrontFace ? 1.0 / bufferObject.ior : bufferObject.ior;
-            float cos_theta = min(dot(-inRay.direction, hit.normal), 1.0);
+            float refractive_index = hit.isFrontFace ? 1.0 / mat.ior : mat.ior;
+            float cos_theta = min(dot(inRay.direction, -hit.normal), 1.0);
             float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
             bool cannot_refract = sin_theta * refractive_index > 1.0;
@@ -90,12 +118,12 @@ class BufferMaterial
 
 
             Ray transmissionRay = CreateRay(rayOrigin, rayDirection, RAYTYPE_TRANSMISSION);
-            transmissionRay.energy = inRay.energy * bufferObject.transmission;
+            transmissionRay.energy = inRay.energy * mat.transmission;
             rb.Push(transmissionRay);
         }
-        if (any(bufferObject.emissive))
+        if (any(mat.emissive))
         {
-            attenuation = bufferObject.emissive;
+            attenuation = mat.emissive;
         }
         
         return true;

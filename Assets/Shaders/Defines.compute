@@ -7,7 +7,7 @@ float _Seed;
 static const float PI = 3.14159265f;
 static const float EPSILON = 1e-8;
 
-const static int MAX_DEPTH = 16;
+const static int MAX_DEPTH = 24;
 const static int NUM_GEOMETRIES = 1;
 const static int MAX_MATERIALS = 16;
 
@@ -24,6 +24,16 @@ float rand()
 	return result;
 }
 
+float sdot(float3 x, float3 y, float f = 1.0f)
+{
+	return saturate(dot(x, y) * f);
+}
+
+float energy(float3 color)
+{
+	return dot(color, 1.0f / 3.0f);
+}
+
 float3x3 GetTangentSpace(float3 normal)
 {
 	// Choose a helper vector for the cross product
@@ -36,17 +46,16 @@ float3x3 GetTangentSpace(float3 normal)
 	return float3x3(tangent, binormal, normal);
 }
 
-float3 SampleHemisphere(float3 normal)
+float3 SampleHemisphere(float3 normal, float alpha = 0.0f)
 {
-	// Uniformly sample hemisphere direction
-	float cosTheta = rand();
-	float sinTheta = sqrt(max(0.0f, 1.0f - cosTheta * cosTheta));
-	float phi = 2 * PI * rand();
-	float3 tangentSpaceDir = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
-	// Transform direction to world space
-	return mul(tangentSpaceDir, GetTangentSpace(normal));
+    // Sample the hemisphere, where alpha determines the kind of the sampling
+    float cosTheta = pow(rand(), 1.0f / (alpha + 1.0f));
+    float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
+    float phi = 2 * PI * rand();
+    float3 tangentSpaceDir = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+    // Transform direction to world space
+    return mul(tangentSpaceDir, GetTangentSpace(normal));
 }
-
 
 //=======================================
 //=-------------------------------------=
@@ -95,6 +104,7 @@ Ray CreateRay(float3 origin, float3 direction, int type) {
 struct RayHit {
 	float3 position;
 	float3 normal;
+	float2 uv;
 	int matID;
 	bool isFrontFace;
 };
@@ -103,6 +113,7 @@ RayHit CreateRayHit() {
 	RayHit hit;
 	hit.position = float3(0.0f, 0.0f, 0.0f);
 	hit.normal = float3(0.0f, 0.0f, 0.0f);
+	hit.uv = float2(0.0f, 0.0f);
 	hit.matID = MAX_MATERIALS;
 	return hit;						  
 }

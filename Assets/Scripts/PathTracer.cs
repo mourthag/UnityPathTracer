@@ -9,6 +9,13 @@ public class PathTracer : MonoBehaviour
     private static bool _meshObjectsNeedRebuilding = false;
     private static List<PathTracingObject> _ptObjects = new List<PathTracingObject>();
 
+    public struct Vertex
+    {
+        public Vector3 Position;
+        public Vector3 Normal;
+        public Vector2 UV;
+    }
+
     public struct MeshObject
     {
         public Matrix4x4 ModelMatrix;
@@ -27,8 +34,7 @@ public class PathTracer : MonoBehaviour
     }
 
     private static List<MeshObject> _meshObjects = new List<MeshObject>();
-    private static List<Vector3> _vertices = new List<Vector3>();
-    private static List<Vector3> _normals = new List<Vector3>();
+    private static List<Vertex> _vertices = new List<Vertex>();
     private static List<int> _indices = new List<int>();
     private static List<PathTracingObject.MaterialObject> _materialBufferObjects = new List<PathTracingObject.MaterialObject>();
     private static List<BVHBufferNode> _bvhBufferNodes = new List<BVHBufferNode>();
@@ -95,7 +101,6 @@ public class PathTracer : MonoBehaviour
         //Clear all buffers
         _meshObjects.Clear();
         _vertices.Clear();
-        _normals.Clear();
         _indices.Clear();
 
         foreach (var ptObject in _ptObjects)
@@ -106,8 +111,18 @@ public class PathTracer : MonoBehaviour
 
             //Add vertices and normals and remember previous count to offset the indices
             int firstVertex = _vertices.Count;
-            _vertices.AddRange(mesh.vertices);
-            _normals.AddRange(mesh.normals);
+            //_vertices.AddRange(mesh.vertices.Select(v => new Vertex() { Position = v}));
+            for(int i=0; i < mesh.vertices.Length; i++)
+            {
+                Vertex v;
+                v.Position = mesh.vertices[i];
+                v.Normal = mesh.normals[i];
+                if (mesh.uv.Length > i)
+                    v.UV = mesh.uv[i];
+                else
+                    v.UV = new Vector2();
+                _vertices.Add(v);
+            }
 
             //Get the index offset and add vertex indices shifted by the current vertex offset
             int firstIndex = _indices.Count;
@@ -136,8 +151,7 @@ public class PathTracer : MonoBehaviour
         }
 
         CreateComputeBuffer<MeshObject>(ref _meshObjectsBuffer, _meshObjects, 140);
-        CreateComputeBuffer<Vector3>(ref _verticesBuffer, _vertices, 12);
-        CreateComputeBuffer<Vector3>(ref _normalsBuffer, _normals, 12);
+        CreateComputeBuffer<Vertex>(ref _verticesBuffer, _vertices, 32);
         CreateComputeBuffer<int>(ref _indicesBuffer, _indices, 4);
         CreateComputeBuffer<PathTracingObject.MaterialObject>(ref _materialBuffer, _materialBufferObjects, 52);
         if (UseBVH)

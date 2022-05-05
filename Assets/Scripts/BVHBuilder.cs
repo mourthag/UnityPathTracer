@@ -73,7 +73,7 @@ public class BVHNode
 public class BVHBuilder
 {
     private static List<PathTracer.MeshObject> _meshObjects = new List<PathTracer.MeshObject>();
-    private static List<Vector3> _vertices = new List<Vector3>();
+    private static List<PathTracer.Vertex> _vertices = new List<PathTracer.Vertex>();
     private static List<int> _indices = new List<int>();
 
     private List<PrimitiveInfo> _primitiveInfos = new List<PrimitiveInfo>();
@@ -85,7 +85,7 @@ public class BVHBuilder
 
     private int _nPrims;
 
-    public BVHBuilder(List<PathTracer.MeshObject> meshObjects, List<Vector3> vertices, List<int> indices)
+    public BVHBuilder(List<PathTracer.MeshObject> meshObjects, List<PathTracer.Vertex> vertices, List<int> indices)
     {
         _meshObjects = meshObjects;
         _vertices = vertices;
@@ -128,21 +128,25 @@ public class BVHBuilder
             for (int i = 0; i < mesh.TriangleCount; i++)
             {
                 Vector3 v1 = mesh.ModelMatrix *
-                             Vector4FromVector3(_vertices[_indices[mesh.IndexOffset + i * 3 + 0]], 1);
+                             Vector4FromVector3(_vertices[_indices[mesh.IndexOffset + i * 3 + 0]].Position, 1);
                 Vector3 v2 = mesh.ModelMatrix *
-                             Vector4FromVector3(_vertices[_indices[mesh.IndexOffset + i * 3 + 1]], 1);
+                             Vector4FromVector3(_vertices[_indices[mesh.IndexOffset + i * 3 + 1]].Position, 1);
                 Vector3 v3 = mesh.ModelMatrix *
-                             Vector4FromVector3(_vertices[_indices[mesh.IndexOffset + i * 3 + 2]], 1);
+                             Vector4FromVector3(_vertices[_indices[mesh.IndexOffset + i * 3 + 2]].Position, 1);
 
-                Bounds bounds = new Bounds();
-                bounds.Maximum = Vector3.Max(v1, Vector3.Max(v2, v3));
-                bounds.Minimum = Vector3.Min(v1, Vector3.Min(v2, v3));
+                Bounds bounds = new Bounds
+                {
+                    Maximum = Vector3.Max(v1, Vector3.Max(v2, v3)),
+                    Minimum = Vector3.Min(v1, Vector3.Min(v2, v3))
+                };
 
-                PrimitiveInfo info = new PrimitiveInfo();
-                info.Bounds = bounds;
-                info.PrimIndex = mesh.IndexOffset + i * 3;
-                info.Center = bounds.Minimum + 0.5f * (bounds.Maximum - bounds.Minimum);
-                info.MeshIndex = meshID;
+                PrimitiveInfo info = new PrimitiveInfo
+                {
+                    Bounds = bounds,
+                    PrimIndex = mesh.IndexOffset + i * 3,
+                    Center = bounds.Minimum + 0.5f * (bounds.Maximum - bounds.Minimum),
+                    MeshIndex = meshID
+                };
                 _primitiveInfos.Add(info);
             }
         }

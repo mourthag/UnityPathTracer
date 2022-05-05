@@ -10,7 +10,7 @@
 //=-------------------------------------=
 //=======================================
 
-bool IntersectTriangle_MT97(Ray ray, inout float t, inout float3 barycentric, float3 v1, float3 v2, float3 v3)
+bool IntersectTriangle_MT97(Ray ray, inout float t, inout float3 barycentric, const float3 v1, const float3 v2, const float3 v3)
 {
     float3 edge1 = v2 - v1;
     float3 edge2 = v3 - v1;
@@ -44,6 +44,12 @@ interface iGeometry
     void Intersect(Ray ray, inout RayHit hit, inout float t);
 };
 
+struct Vertex {
+    float3 position;
+    float3 normal;
+    float2 uv;
+};
+
 struct MeshObject
 {
     float4x4 modelMatrix;
@@ -54,8 +60,7 @@ struct MeshObject
 };
 
 StructuredBuffer<MeshObject> _MeshObjects;
-StructuredBuffer<float3> _Vertices;
-StructuredBuffer<float3> _Normals;
+StructuredBuffer<Vertex> _Vertices;
 StructuredBuffer<int> _Indices;
 
 /*  
@@ -77,14 +82,13 @@ class Meshes : iGeometry
             MeshObject mesh = _MeshObjects[meshID];
             for (int i = 0; i < mesh.triangleCount; i++)
             {
-                float3 v1 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 0]], 1)).xyz;
-                float3 v2 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 1]], 1)).xyz;
-                float3 v3 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[mesh.indexOffset + i * 3 + 2]], 1)).xyz;
+                const Vertex vert1 = _Vertices[_Indices[mesh.indexOffset + i * 3 + 0]];
+                const Vertex vert2 = _Vertices[_Indices[mesh.indexOffset + i * 3 + 1]];
+                const Vertex vert3 = _Vertices[_Indices[mesh.indexOffset + i * 3 + 2]];
 
-
-                float3 n1 = mul(mesh.normalMatrix, float4(_Normals[_Indices[mesh.indexOffset + i * 3 + 0]], 1)).xyz;
-                float3 n2 = mul(mesh.normalMatrix, float4(_Normals[_Indices[mesh.indexOffset + i * 3 + 1]], 1)).xyz;
-                float3 n3 = mul(mesh.normalMatrix, float4(_Normals[_Indices[mesh.indexOffset + i * 3 + 2]], 1)).xyz;
+                const float3 v1 = mul(mesh.modelMatrix, float4(vert1.position, 1)).xyz;
+                const float3 v2 = mul(mesh.modelMatrix, float4(vert2.position, 1)).xyz;
+                const float3 v3 = mul(mesh.modelMatrix, float4(vert3.position, 1)).xyz;
 				
                 float3 barycentric;
 				
@@ -95,7 +99,13 @@ class Meshes : iGeometry
                         t = t_int;
                         hit.position = ray.origin + t * ray.direction;
                         hit.matID = mesh.materialIndex;
+
+                        const float3 n1 = mul(mesh.normalMatrix, float4(vert1.normal, 1)).xyz;
+                        const float3 n2 = mul(mesh.normalMatrix, float4(vert2.normal, 1)).xyz;
+                        const float3 n3 = mul(mesh.normalMatrix, float4(vert3.normal, 1)).xyz;
                         hit.normal = normalize(barycentric.x * n1 + barycentric.y * n2 + barycentric.z * n3);
+
+                        hit.uv = barycentric.x * vert1.uv + barycentric.y * vert2.uv + barycentric.z * vert3.uv;
                         hit.isFrontFace = dot(hit.normal, -ray.direction) > 0;
                     }
                 }
@@ -117,7 +127,7 @@ struct BVHNode
 StructuredBuffer<BVHNode> _BVHNodes;
 int RootNode;
 
-const static int STACKSIZE = 16;
+const static int STACKSIZE = 32;
 void Push(int newEntry, inout int stack[STACKSIZE], inout int currentSize)
 {
     if (currentSize >= STACKSIZE)
@@ -177,26 +187,22 @@ class BVH : iGeometry
             //inner node
             if (IntersectAABB(node.BoundsMinimum, node.BoundsMaximum, ray))
             {
-
-                
                 if (node.PrimCount > 0)
                 {
                     //leaf Node -> iterate over Prims
                     for (int i = 0; i < node.PrimCount; i++)
                     {                    
                         MeshObject mesh = _MeshObjects[node.MeshIndex];
-                        //TODO Triangle order fucked up?
-                        float3 v1 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[node.FirstPrimOffset + 3 * i + 0]], 1)).xyz;
-                        float3 v2 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[node.FirstPrimOffset + 3 * i + 1]], 1)).xyz;
-                        float3 v3 = mul(mesh.modelMatrix, float4(_Vertices[_Indices[node.FirstPrimOffset + 3 * i + 2]], 1)).xyz;
 
+                        const Vertex vert1 = _Vertices[_Indices[node.FirstPrimOffset + i * 3 + 0]];
+                        const Vertex vert2 = _Vertices[_Indices[node.FirstPrimOffset + i * 3 + 1]];
+                        const Vertex vert3 = _Vertices[_Indices[node.FirstPrimOffset + i * 3 + 2]];
 
-                        float3 n1 = mul(mesh.normalMatrix, float4(_Normals[_Indices[node.FirstPrimOffset + 3 * i + 0]], 1)).xyz;
-                        float3 n2 = mul(mesh.normalMatrix, float4(_Normals[_Indices[node.FirstPrimOffset + 3 * i + 1]], 1)).xyz;
-                        float3 n3 = mul(mesh.normalMatrix, float4(_Normals[_Indices[node.FirstPrimOffset + 3 * i + 2]], 1)).xyz;
+                        const float3 v1 = mul(mesh.modelMatrix, float4(vert1.position, 1)).xyz;
+                        const float3 v2 = mul(mesh.modelMatrix, float4(vert2.position, 1)).xyz;
+                        const float3 v3 = mul(mesh.modelMatrix, float4(vert3.position, 1)).xyz;
 
                         float3 barycentric;
-
 
                         if (IntersectTriangle_MT97(ray, t_int, barycentric, v1, v2, v3))
                         {
@@ -205,12 +211,18 @@ class BVH : iGeometry
                                 t = t_int;
                                 hit.position = ray.origin + t * ray.direction;
                                 hit.matID = mesh.materialIndex;
+
+                                const float3 n1 = mul(mesh.normalMatrix, float4(vert1.normal, 1)).xyz;
+                                const float3 n2 = mul(mesh.normalMatrix, float4(vert2.normal, 1)).xyz;
+                                const float3 n3 = mul(mesh.normalMatrix, float4(vert3.normal, 1)).xyz;
                                 hit.normal = normalize(barycentric.x * n1 + barycentric.y * n2 + barycentric.z * n3);
+
+                                hit.uv = barycentric.x * vert1.uv + barycentric.y * vert2.uv + barycentric.z * vert3.uv;
                                 hit.isFrontFace = dot(hit.normal, -ray.direction) > 0;
                             }
                         }
-
                     }
+
 
                 }
                 else {
@@ -230,6 +242,7 @@ class BVH : iGeometry
 //=------------OBSOLETE-----------------=
 //=-------------------------------------=
 //=======================================
+/*
 class Ground : iGeometry
 {
 
@@ -366,5 +379,5 @@ Mesh CreateMesh(MeshObject object)
     Mesh m;
     m.mesh = object;
     return m;
-}
+}*/
 #endif
