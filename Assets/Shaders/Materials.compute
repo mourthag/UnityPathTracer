@@ -24,6 +24,45 @@ float Schlicks_Approx(float cosine, float refractive_index)
     return r0 + (1.0 - r0) * pow(1.0 - cosine, 5.0);
 }
 
+float3 fresnelSchlick(float cosTheta, float3 F0)
+{
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+float3 halfVector(const float3 l, const float3 v) {
+    return normalize(l + v);
+}
+
+float NDF_GGX(const float3 N, const float3 H, const float alpha)
+{
+    const float a2 = alpha * alpha;
+    const float NdotH = max(dot(N, H), 0.0);
+    float denom = (NdotH * NdotH * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+
+    return a2 / denom;
+}
+
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = (roughness + 1.0);
+    float k = (r * r) / 8.0;
+
+    float nom = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+
+    return nom / denom;
+}
+
+float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx1 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx2 = GeometrySchlickGGX(NdotL, roughness);
+
+    return ggx1 * ggx2;
+}
 
 //=======================================
 //=-------------------------------------=
@@ -82,6 +121,46 @@ class BufferMaterial
         rb.Push(reflectionRay);
     }
 
+    void EvaluateCookTorrance(const MaterialBufferObject mat, const Ray inRay, const RayHit hit, inout RayBuffer rb)
+    {
+        const float sum = energy(mat.specular) + energy(mat.albedo);
+        const float specChance = energy(mat.specular) / sum;
+        const float diffChance = 1.0 - specChance;
+
+        const float3 rayOrigin = hit.position + hit.normal * 0.0001f;
+        const float3 reflected = reflect(inRay.direction, hit.normal);
+        Ray reflectionRay;
+
+        if (rand() < specChance) {
+            //specular reflection
+            const float metalness = 0.5;
+            const float roughness = 0.8;
+            float3 F0 = float3(0.04, 0.04, 0.04);
+            F0 = lerp(F0, mat.albedo, metalness);
+
+            const float3 rayDirection = SampleHemisphere(hit.normal, 1.0f);
+            reflectionRay = CreateRay(rayOrigin, rayDirection, RAYTYPE_REFLECTION);
+
+            const float3 H = halfVector(rayDirection, -inRay.direction);
+            const float D = NDF_GGX(hit.normal, H, roughness);
+            const float3 F = fresnelSchlick(max(dot(H, -inRay.direction), 0.0), F0);
+            const float G = GeometrySmith(hit.normal, -inRay.direction, rayDirection, roughness);
+
+            const float3 numerator = D * F * G;
+            const float denominator = 4.0 * max(dot(hit.normal, -inRay.direction), 0.0) * max(dot(hit.normal, reflectionRay.direction), 0.0) + 0.00001;
+            reflectionRay.energy = inRay.energy * mat.specular / specChance * numerator / denominator ;
+
+        }
+        else {
+            //diffuse reflection
+            const float3 rayDirection = SampleHemisphere(hit.normal, 1.0f);
+            reflectionRay = CreateRay(rayOrigin, rayDirection, RAYTYPE_REFLECTION);
+            reflectionRay.energy = inRay.energy * mat.albedo / diffChance;
+        }
+
+        rb.Push(reflectionRay);
+    }
+
     bool Scatter(int matID, Ray inRay, RayHit hit, inout float3 attenuation, inout RayBuffer rb)
     {
         MaterialBufferObject mat = _Materials[matID];
@@ -92,7 +171,7 @@ class BufferMaterial
 
         if (any(mat.specular) || any(mat.albedo))
         {
-            EvaluatePhong(mat, inRay, hit, rb);
+            EvaluateCookTorrance(mat, inRay, hit, rb);
         }
         else if (any(mat.transmission))
         {
