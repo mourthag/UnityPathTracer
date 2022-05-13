@@ -153,7 +153,7 @@ public class PathTracer : MonoBehaviour
         CreateComputeBuffer<MeshObject>(ref _meshObjectsBuffer, _meshObjects, 140);
         CreateComputeBuffer<Vertex>(ref _verticesBuffer, _vertices, 32);
         CreateComputeBuffer<int>(ref _indicesBuffer, _indices, 4);
-        CreateComputeBuffer<PathTracingObject.MaterialObject>(ref _materialBuffer, _materialBufferObjects, 52);
+        CreateComputeBuffer<PathTracingObject.MaterialObject>(ref _materialBuffer, _materialBufferObjects, 60);
         if (UseBVH)
         {
             CreateBVH();

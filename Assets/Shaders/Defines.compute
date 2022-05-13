@@ -57,6 +57,21 @@ float3 SampleHemisphere(float3 normal, float alpha = 0.0f)
     return mul(tangentSpaceDir, GetTangentSpace(normal));
 }
 
+float3 SampleCT(const float3 reflected, const float roughness) {
+	const float eta1 = rand();
+	const float eta2 = rand();
+
+	//todo optimize by removing trigo methods (see sin(atan(x)))
+	const float theta = atan(roughness * sqrt(eta1)/sqrt(1-eta1));
+	const float cosTheta = cos(theta);
+	const float sinTheta = sin(theta);
+	const float phi = 2 * PI * eta2;
+
+	const float3 tangentSpaceDir = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+    // Transform direction to world space
+    return mul(tangentSpaceDir, GetTangentSpace(reflected));
+}
+
 //=======================================
 //=-------------------------------------=
 //=---------------Rays------------------=

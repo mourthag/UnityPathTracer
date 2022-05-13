@@ -161,6 +161,8 @@ MonoBehaviour:
     Emissive: {x: 10, y: 8, z: 5}
     Transmission: {x: 0, y: 0, z: 0}
     IOR: 0
+    Metalness: 0
+    Roughness: 0
 --- !u!135 &172555356
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -352,6 +354,8 @@ MonoBehaviour:
     Emissive: {x: 0, y: 0, z: 0}
     Transmission: {x: 0, y: 0, z: 0}
     IOR: 0
+    Metalness: 1
+    Roughness: 0.11
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
@@ -483,6 +487,8 @@ MonoBehaviour:
     Emissive: {x: 0, y: 0, z: 0}
     Transmission: {x: 0, y: 0, z: 0}
     IOR: 0
+    Metalness: 0
+    Roughness: 0.9
 --- !u!135 &959114478
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -698,6 +704,8 @@ MonoBehaviour:
     Emissive: {x: 0, y: 0, z: 0}
     Transmission: {x: 0.9, y: 0.9, z: 0.9}
     IOR: 1.4
+    Metalness: 0
+    Roughness: 0
 --- !u!136 &1088639325
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -798,6 +806,8 @@ MonoBehaviour:
     Emissive: {x: 0, y: 0, z: 0}
     Transmission: {x: 0.9, y: 0.9, z: 0.9}
     IOR: 1.4
+    Metalness: 0
+    Roughness: 0
 --- !u!1001 &1841451979
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -941,6 +951,8 @@ MonoBehaviour:
     Emissive: {x: 0, y: 0, z: 0}
     Transmission: {x: 0, y: 0, z: 0}
     IOR: 0
+    Metalness: 0
+    Roughness: 0
 --- !u!65 &1985319406
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1199,6 +1211,8 @@ MonoBehaviour:
     Emissive: {x: 0, y: 0, z: 0}
     Transmission: {x: 1, y: 1, z: 1}
     IOR: 1.4
+    Metalness: 0
+    Roughness: 0
 --- !u!33 &6542056400740079095
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -1266,6 +1280,8 @@ MonoBehaviour:
     Emissive: {x: 0, y: 0, z: 0}
     Transmission: {x: 0, y: 0, z: 0}
     IOR: 0
+    Metalness: 1
+    Roughness: 0.2
 --- !u!4 &7942857636352804656
 Transform:
   m_ObjectHideFlags: 0
@@ -1317,3 +1333,5 @@ MonoBehaviour:
     Emissive: {x: 0, y: 0, z: 0}
     Transmission: {x: 0, y: 0, z: 0}
     IOR: 0
+    Metalness: 1
+    Roughness: 0.01
