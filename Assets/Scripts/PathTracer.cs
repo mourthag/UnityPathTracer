@@ -111,18 +111,13 @@ public class PathTracer : MonoBehaviour
 
             //Add vertices and normals and remember previous count to offset the indices
             int firstVertex = _vertices.Count;
-            //_vertices.AddRange(mesh.vertices.Select(v => new Vertex() { Position = v}));
-            for(int i=0; i < mesh.vertices.Length; i++)
-            {
-                Vertex v;
-                v.Position = mesh.vertices[i];
-                v.Normal = mesh.normals[i];
-                if (mesh.uv.Length > i)
-                    v.UV = mesh.uv[i];
-                else
-                    v.UV = new Vector2();
-                _vertices.Add(v);
-            }
+
+            var query = mesh.vertices.Zip(mesh.normals,
+                (position, normal) => new Vertex{
+                    Position = position,
+                    Normal = normal,
+            });
+            _vertices.AddRange(query.ToArray()) ;
 
             //Get the index offset and add vertex indices shifted by the current vertex offset
             int firstIndex = _indices.Count;
