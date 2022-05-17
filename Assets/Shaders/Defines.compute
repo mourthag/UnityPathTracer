@@ -11,6 +11,13 @@ const static int MAX_DEPTH = 24;
 const static int NUM_GEOMETRIES = 1;
 const static int MAX_MATERIALS = 16;
 
+#define USE_RR
+#ifdef USE_RR
+const static float RR_SURV_CHANCE = 0.8;
+#else
+const static float RR_SURV_CHANCE = 1.0;
+#endif
+
 //=======================================
 //=-------------------------------------=
 //=---------------Math------------------=

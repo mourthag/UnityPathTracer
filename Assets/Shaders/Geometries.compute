@@ -17,8 +17,13 @@ bool IntersectTriangle_MT97(Ray ray, inout float t, inout float3 barycentric, co
 		
     float3 pvec = cross(ray.direction, edge2);
     float det = dot(edge1, pvec);
+#ifdef BACKFACECULLING
     if (det < EPSILON)
         return false;
+#else
+    if (det < EPSILON && det > -EPSILON)
+        return false;
+#endif
 		
     float invDet = 1.0f / det;
 		
@@ -212,9 +217,9 @@ class BVH : iGeometry
                                 hit.position = ray.origin + t * ray.direction;
                                 hit.matID = mesh.materialIndex;
 
-                                const float3 n1 = mul(mesh.normalMatrix, float4(vert1.normal, 1)).xyz;
-                                const float3 n2 = mul(mesh.normalMatrix, float4(vert2.normal, 1)).xyz;
-                                const float3 n3 = mul(mesh.normalMatrix, float4(vert3.normal, 1)).xyz;
+                                const float3 n1 = mul(mesh.normalMatrix, float4(vert1.normal, 0)).xyz;
+                                const float3 n2 = mul(mesh.normalMatrix, float4(vert2.normal, 0)).xyz;
+                                const float3 n3 = mul(mesh.normalMatrix, float4(vert3.normal, 0)).xyz;
                                 hit.normal = normalize(barycentric.x * n1 + barycentric.y * n2 + barycentric.z * n3);
 
                                 hit.uv = barycentric.x * vert1.uv + barycentric.y * vert2.uv + barycentric.z * vert3.uv;

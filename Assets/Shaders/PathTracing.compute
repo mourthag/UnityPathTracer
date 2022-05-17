@@ -1,5 +1,6 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma multi_compile_local __ USE_BVH
+#pragma multi_compile_local __ BACKFACECULLING
 
 #pragma kernel CSMain
 

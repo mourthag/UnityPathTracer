@@ -10,7 +10,7 @@ public class PathTracingObject : MonoBehaviour
     [Serializable]
     public struct MaterialObject
     {
-        public Vector3 Albedo, Specular, Emissive, Transmission;
+        public Vector3 Albedo, Emissive, Transmission;
         public float IOR, Metalness, Roughness;
     }
 

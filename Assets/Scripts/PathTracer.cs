@@ -41,7 +41,6 @@ public class PathTracer : MonoBehaviour
 
     private ComputeBuffer _meshObjectsBuffer;
     private ComputeBuffer _verticesBuffer;
-    private ComputeBuffer _normalsBuffer;
     private ComputeBuffer _indicesBuffer;
     private ComputeBuffer _materialBuffer;
     private ComputeBuffer _bvhBuffer;
@@ -52,6 +51,7 @@ public class PathTracer : MonoBehaviour
 
     public uint MaxSamples;
     public bool UseBVH;
+    public bool BackfaceCulling;
 
     private BVHBuilder _bvhBuilder;
 
@@ -148,7 +148,7 @@ public class PathTracer : MonoBehaviour
         CreateComputeBuffer<MeshObject>(ref _meshObjectsBuffer, _meshObjects, 140);
         CreateComputeBuffer<Vertex>(ref _verticesBuffer, _vertices, 32);
         CreateComputeBuffer<int>(ref _indicesBuffer, _indices, 4);
-        CreateComputeBuffer<PathTracingObject.MaterialObject>(ref _materialBuffer, _materialBufferObjects, 60);
+        CreateComputeBuffer<PathTracingObject.MaterialObject>(ref _materialBuffer, _materialBufferObjects, 48);
         if (UseBVH)
         {
             CreateBVH();
@@ -250,9 +250,13 @@ public class PathTracer : MonoBehaviour
 
         SetComputeBuffer("_MeshObjects", _meshObjectsBuffer);
         SetComputeBuffer("_Vertices", _verticesBuffer);
-        SetComputeBuffer("_Normals", _normalsBuffer);
         SetComputeBuffer("_Indices", _indicesBuffer);
         SetComputeBuffer("_Materials", _materialBuffer);
+
+        if (BackfaceCulling)
+            PathTracingShader.EnableKeyword("BACKFACECULLING");
+        else
+            PathTracingShader.DisableKeyword("BACKFACECULLING");
 
         if (UseBVH)
         {
@@ -344,7 +348,6 @@ public class PathTracer : MonoBehaviour
     {
         _indicesBuffer?.Release();
         _verticesBuffer?.Release();
-        _normalsBuffer?.Release();
         _meshObjectsBuffer?.Release();
         _materialBuffer?.Release();
         _bvhBuffer?.Release();
