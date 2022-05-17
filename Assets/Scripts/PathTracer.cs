@@ -109,39 +109,46 @@ public class PathTracer : MonoBehaviour
             var meshRenderer = ptObject.GetComponent<MeshRenderer>();
             var mesh = ptObject.GetComponent<MeshFilter>().sharedMesh;
 
+            var query = mesh.vertices.Zip(mesh.normals,
+                (position, normal) => new Vertex
+                {
+                    Position = position,
+                    Normal = normal,
+                });
+
             //Add vertices and normals and remember previous count to offset the indices
             int firstVertex = _vertices.Count;
 
-            var query = mesh.vertices.Zip(mesh.normals,
-                (position, normal) => new Vertex{
-                    Position = position,
-                    Normal = normal,
-            });
-            _vertices.AddRange(query.ToArray()) ;
+            _vertices.AddRange(query.ToArray());
 
-            //Get the index offset and add vertex indices shifted by the current vertex offset
-            int firstIndex = _indices.Count;
-            var indices = mesh.GetIndices(0);
-            _indices.AddRange(indices.Select(index => index + firstVertex));
-
-            //Add material and get its index
-            int matIndex = _materialBufferObjects.Count();
-            _materialBufferObjects.Add(ptObject.Material);
-
-            Matrix4x4 normalMat = meshRenderer.localToWorldMatrix.inverse.transpose;
-
-            //TODO more eloquent material parsing and submeshes
-
-            //Create an object to boundle information of a Mesh and add it
-            MeshObject meshObject = new MeshObject
+            for (int i = 0; i < mesh.subMeshCount; i++)
             {
-                ModelMatrix = meshRenderer.localToWorldMatrix,
-                NormalMatrix = normalMat,
-                IndexOffset = firstIndex,
-                TriangleCount = indices.Length / 3,
-                MaterialIndex = matIndex
-            };
-            _meshObjects.Add(meshObject);
+                var submesh = mesh.GetSubMesh(i);
+
+                //Get the index offset and add vertex indices shifted by the current vertex offset
+                int firstIndex = _indices.Count;
+                var indices = mesh.GetIndices(i);
+                _indices.AddRange(indices.Select(index => index + firstVertex));
+
+                //Add material and get its index
+                int matIndex = _materialBufferObjects.Count();
+                _materialBufferObjects.Add(ptObject.Materials[i]);
+
+                Matrix4x4 normalMat = meshRenderer.localToWorldMatrix.inverse.transpose;
+
+                //Create an object to boundle information of a Mesh and add it
+                MeshObject meshObject = new MeshObject
+                {
+                    ModelMatrix = meshRenderer.localToWorldMatrix,
+                    NormalMatrix = normalMat,
+                    IndexOffset = firstIndex,
+                    TriangleCount = indices.Length / 3,
+                    MaterialIndex = matIndex
+                };
+                _meshObjects.Add(meshObject);
+            }
+
+
 
         }
 
