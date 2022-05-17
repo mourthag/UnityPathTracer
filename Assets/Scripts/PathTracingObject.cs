@@ -34,7 +34,7 @@ public class PathTracingObject : MonoBehaviour
             mat.Emissive.y = material.GetColor("_EmissionColor").g;
             mat.Emissive.z = material.GetColor("_EmissionColor").b;
 
-            mat.Metalness = 1.0f;// material.GetFloat("_Metallic");
+            mat.Metalness = material.GetFloat("_Metallic");
             mat.Roughness = 1.0f - material.GetFloat("_Glossiness") - 0.0001f;
             Materials.Add(mat);
         }
