@@ -1,6 +1,7 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma multi_compile_local __ USE_BVH
 #pragma multi_compile_local __ BACKFACECULLING
+#pragma multi_compile_local __ USE_LIGHTS
 
 #pragma kernel CSMain
 
@@ -20,6 +21,7 @@ float2 _PixelOffset;
 Texture2D<float4> _SkyboxTexture;
 SamplerState sampler_SkyboxTexture;
 
+
 Ray CreateCameraRay(float2 uv)
 {
 	//extract translation component from camera to World
@@ -36,14 +38,19 @@ Ray CreateCameraRay(float2 uv)
 	return ray;
 }
 
-void Trace(Ray ray, iGeometry geometries[NUM_GEOMETRIES], inout RayHit bestHit, inout float t)
+void Trace(Ray ray, inout RayHit bestHit, inout float t)
 {
     t = 1.#INF;
 	bestHit = CreateRayHit();
-	for (int i = 0; i < NUM_GEOMETRIES; i++)
-	{
-		geometries[i].Intersect(ray, bestHit, t);
-	}
+		
+#ifdef USE_BVH
+	BVH b;
+	iGeometry geometry = b;
+#else
+	Meshes m;
+	iGeometry geometry = m;
+#endif
+	geometry.Intersect(ray, bestHit, t);
 }
 
 float3 Shade(inout Ray ray, RayHit hit, float t, inout RayBuffer rb)
@@ -76,16 +83,6 @@ void CSMain(uint3 groupid : SV_GroupThreadID, uint3 dpID : SV_DispatchThreadID)
 	_Pixel = dpID.xy;
 
 
-	iGeometry geometries[NUM_GEOMETRIES];
-
-#ifdef USE_BVH
-		BVH b;
-		geometries[0] = b;
-#else
-		Meshes m;
-		geometries[0] = m;
-#endif
-
 	// Transform pixel to [-1,1] range
     float2 uv = float2((dpID.xy + _PixelOffset) / float2(width, height) * 2.0f - 1.0f);
 
@@ -103,7 +100,7 @@ void CSMain(uint3 groupid : SV_GroupThreadID, uint3 dpID : SV_DispatchThreadID)
 	while (rb.currentSize > 0)
 	{
 		Ray ray = rb.Pop();
-		Trace(ray, geometries, hit, t);
+		Trace(ray, hit, t);
         result += ray.energy * Shade(ray, hit, t, rb);
 	}
 

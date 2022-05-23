@@ -7,6 +7,7 @@ using Random = UnityEngine.Random;
 public class PathTracer : MonoBehaviour
 {
     private static bool _meshObjectsNeedRebuilding = false;
+    private static bool _lightsNeedRebuilding = false;
     private static List<PathTracingObject> _ptObjects = new List<PathTracingObject>();
 
     public struct Vertex
@@ -39,11 +40,14 @@ public class PathTracer : MonoBehaviour
     private static List<PathTracingObject.MaterialObject> _materialBufferObjects = new List<PathTracingObject.MaterialObject>();
     private static List<BVHBufferNode> _bvhBufferNodes = new List<BVHBufferNode>();
 
+    private static List<LightBufferObject> _lightBufferObjects = new List<LightBufferObject>();
+
     private ComputeBuffer _meshObjectsBuffer;
     private ComputeBuffer _verticesBuffer;
     private ComputeBuffer _indicesBuffer;
     private ComputeBuffer _materialBuffer;
     private ComputeBuffer _bvhBuffer;
+    private ComputeBuffer _lightsBuffer;
 
     public ComputeShader PathTracingShader;
 
@@ -81,10 +85,30 @@ public class PathTracer : MonoBehaviour
         _meshObjectsNeedRebuilding = true;
     }
 
+    public static void RegisterLight(PathTracingLight ptLight)
+    {
+        _lightBufferObjects.Add(new LightBufferObject(ptLight));
+        _lightsNeedRebuilding = true;
+    }
+
+    public static void UnregisterLight(PathTracingLight ptLight)
+    {
+        _lightBufferObjects.Remove(new LightBufferObject(ptLight));
+        _lightsNeedRebuilding = true;
+    }
+
     public static void SetMeshObjectsNeedRebuilding()
     {
         _meshObjectsNeedRebuilding = true;
 
+    }
+
+    private void RebuildLightsBuffer()
+    {
+        if(!_lightsNeedRebuilding)
+            return;
+
+        CreateComputeBuffer<LightBufferObject>(ref _lightsBuffer, _lightBufferObjects, 28);
     }
 
     private void RebuildMeshObjectBuffers()
@@ -163,7 +187,6 @@ public class PathTracer : MonoBehaviour
             CreateComputeBuffer<BVHBufferNode>(ref  _bvhBuffer, _bvhBufferNodes, 44);
             CreateComputeBuffer<int>(ref _indicesBuffer, _bvhBuilder.GetOrderedIndices(), 4);
         }
-
 
         TimeSpan renderTime = DateTime.Now - _startTime;
         Debug.Log("Scene/BVH construction took " + renderTime.TotalSeconds + " seconds!");
@@ -259,11 +282,17 @@ public class PathTracer : MonoBehaviour
         SetComputeBuffer("_Vertices", _verticesBuffer);
         SetComputeBuffer("_Indices", _indicesBuffer);
         SetComputeBuffer("_Materials", _materialBuffer);
+        SetComputeBuffer("_Lights", _lightsBuffer);
 
         if (BackfaceCulling)
             PathTracingShader.EnableKeyword("BACKFACECULLING");
         else
             PathTracingShader.DisableKeyword("BACKFACECULLING");
+
+        if(_lightBufferObjects.Count > 0)
+            PathTracingShader.EnableKeyword("USE_LIGHTS");
+        else
+            PathTracingShader.DisableKeyword("USE_LIGHTS");
 
         if (UseBVH)
         {
@@ -278,6 +307,7 @@ public class PathTracer : MonoBehaviour
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         RebuildMeshObjectBuffers();
+        RebuildLightsBuffer();
         Render(destination);
 
         if(_currentSample >= MaxSamples && !_wasImageSaved)
@@ -358,5 +388,6 @@ public class PathTracer : MonoBehaviour
         _meshObjectsBuffer?.Release();
         _materialBuffer?.Release();
         _bvhBuffer?.Release();
+        _lightsBuffer.Release();
     }
 }

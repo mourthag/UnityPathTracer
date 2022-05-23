@@ -31,6 +31,13 @@ float rand()
 	return result;
 }
 
+//return rand int in [a, b)
+int randInt(int a, int b)
+{
+	float f = rand() * (b-a) + a;
+	return int(f);
+}
+
 float sdot(float3 x, float3 y, float f = 1.0f)
 {
 	return saturate(dot(x, y) * f);
@@ -88,6 +95,7 @@ float3 SampleCT(const float3 reflected, const float roughness) {
 static const int RAYTYPE_PRIMARY = 0;
 static const int RAYTYPE_REFLECTION = 1;
 static const int RAYTYPE_TRANSMISSION = 2;
+static const int RAYTYPE_SHADOW = 3;
 static const int RAYTYPE_INVALID = -1;
 
 struct Ray {
@@ -137,6 +145,7 @@ RayHit CreateRayHit() {
 	hit.normal = float3(0.0f, 0.0f, 0.0f);
 	hit.uv = float2(0.0f, 0.0f);
 	hit.matID = MAX_MATERIALS;
+	hit.isFrontFace = true;
 	return hit;						  
 }
 

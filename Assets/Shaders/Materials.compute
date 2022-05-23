@@ -2,6 +2,7 @@
 #define MATERIALS_H
 
 #include "Defines.compute"
+#include "Lights.compute"
 
 //=======================================
 //=-------------------------------------=
@@ -122,7 +123,7 @@ class BufferMaterial
         rb.Push(reflectionRay);
     }*/
 
-    void EvaluateCookTorrance(const MaterialBufferObject mat, const Ray inRay, const RayHit hit, inout RayBuffer rb)
+    void EvaluateCookTorrance(const MaterialBufferObject mat, const Ray inRay, const RayHit hit, inout RayBuffer rb, inout float3 attenuation)
     {
         const float3 rayOrigin = hit.position + hit.normal * 0.0001f;
         const float3 reflected = reflect(inRay.direction, hit.normal);
@@ -132,7 +133,28 @@ class BufferMaterial
         float3 F0 = float3(0.04, 0.04, 0.04);
         F0 = lerp(F0, mat.albedo, mat.metalness);
 
-        const float3 rayDirection = SampleCT(reflected, mat.roughness);
+        float3 rayDirection = SampleHemisphere(hit.normal);
+
+#ifdef USE_LIGHTS
+        const int samplingStrats = 2;
+        const int lightId = GetRandomLightID();
+#else
+        const int samplingStrats = 1;
+#endif
+        
+        const int SamplingStrategy = randInt(0, samplingStrats);
+        
+        if(SamplingStrategy == 0)
+        {
+            rayDirection = SampleCT(reflected, mat.roughness);
+        }
+#ifdef USE_LIGHTS
+        else if(SamplingStrategy == 1)
+        {
+            rayDirection = SampleLight(lightId, rayOrigin);
+        }
+#endif
+        
         const float3 H = halfVector(rayDirection, V);
         const float3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
@@ -151,14 +173,24 @@ class BufferMaterial
         }
         else {
             //diffuse
-            const float3 rayDirection = SampleHemisphere(hit.normal, 1.0f);
             reflectionRay = CreateRay(rayOrigin, rayDirection, RAYTYPE_REFLECTION);
             reflectionRay.energy = inRay.energy * mat.albedo * (1.0 - specChance);
 
         }
 
+        reflectionRay.energy *= samplingStrats;
 
-        rb.Push(reflectionRay);
+        if(SamplingStrategy == 0)
+        {
+            rb.Push(reflectionRay);
+        }
+#ifdef USE_LIGHTS
+        else if(SamplingStrategy == 1)
+        {
+            reflectionRay.type = RAYTYPE_SHADOW;
+            attenuation = reflectionRay.energy * GetContribution(lightId, reflectionRay);
+        }
+#endif
     }
 
     bool Scatter(int matID, Ray inRay, RayHit hit, inout float3 attenuation, inout RayBuffer rb)
@@ -175,9 +207,9 @@ class BufferMaterial
         {
 #ifdef USE_RR
             if(rand() < RR_SURV_CHANCE)
-            EvaluateCookTorrance(mat, inRay, hit, rb);
+            EvaluateCookTorrance(mat, inRay, hit, rb, attenuation);
 #else
-            EvaluateCookTorrance(mat, inRay, hit, rb);
+            EvaluateCookTorrance(mat, inRay, hit, rb, attenuation);
 #endif
         }
         else if (any(mat.transmission))
