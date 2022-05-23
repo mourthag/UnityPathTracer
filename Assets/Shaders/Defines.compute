@@ -13,7 +13,7 @@ const static int MAX_MATERIALS = 128;
 
 #define USE_RR
 #ifdef USE_RR
-const static float RR_SURV_CHANCE = 0.8;
+const static float RR_SURV_CHANCE = 0.95;
 #else
 const static float RR_SURV_CHANCE = 1.0;
 #endif

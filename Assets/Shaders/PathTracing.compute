@@ -60,7 +60,7 @@ float3 Shade(inout Ray ray, RayHit hit, float t, inout RayBuffer rb)
 		float3 attenuation = float3(0.0f, 0.0f, 0.0f);
         
         BufferMaterial mat;
-        mat.Scatter(hit.matID, ray, hit, attenuation, rb);
+    	mat.Scatter(hit.matID, ray, hit, attenuation, rb);
 
 		return attenuation;
 	}

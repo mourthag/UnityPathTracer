@@ -133,11 +133,17 @@ public class PathTracer : MonoBehaviour
             var meshRenderer = ptObject.GetComponent<MeshRenderer>();
             var mesh = ptObject.GetComponent<MeshFilter>().sharedMesh;
 
-            var query = mesh.vertices.Zip(mesh.normals,
+            IEnumerable<Vertex> query = mesh.vertices.Zip(mesh.normals,
                 (position, normal) => new Vertex
                 {
                     Position = position,
                     Normal = normal,
+                });
+            if(mesh.uv.Length > 0)
+                query = mesh.uv.Zip(query, (uv, vert) => new Vertex{
+                    Position = vert.Position,
+                    Normal = vert.Normal,
+                    UV = uv
                 });
 
             //Add vertices and normals and remember previous count to offset the indices
