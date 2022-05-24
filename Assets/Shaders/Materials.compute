@@ -170,7 +170,7 @@ class BufferMaterial
             const float3 numerator = D * F * G;
             const float denominator = 4.0 * max(dot(hit.normal, V), 0.0) * max(dot(hit.normal, reflectionRay.direction), 0.0) + 0.00001;
 
-            reflectionRay.energy = inRay.energy * mat.albedo * numerator / (RR_SURV_CHANCE * denominator);
+            reflectionRay.energy = inRay.energy * mat.albedo * numerator / denominator;
             if(SamplingStrategy == 0)
                 reflectionRay.energy /= (D * dot(H, hit.normal));
         }
@@ -182,6 +182,15 @@ class BufferMaterial
         }
 
         reflectionRay.energy *= samplingStrats;
+
+#ifdef USE_RR
+        float surv_Chance = max(reflectionRay.energy.x, max(reflectionRay.energy.y, reflectionRay.energy.z));
+        if(rand()>surv_Chance)
+        {
+            return;
+        }
+        reflectionRay.energy *= 1.0 / surv_Chance;
+#endif
 
         if(SamplingStrategy == 0)
         {
@@ -208,12 +217,7 @@ class BufferMaterial
 
         if ( any(mat.albedo))
         {
-#ifdef USE_RR
-            if(rand() < RR_SURV_CHANCE)
             EvaluateCookTorrance(mat, inRay, hit, rb, attenuation);
-#else
-            EvaluateCookTorrance(mat, inRay, hit, rb, attenuation);
-#endif
         }
         else if (any(mat.transmission))
         {
