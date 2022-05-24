@@ -108,7 +108,7 @@ public class PathTracer : MonoBehaviour
         if(!_lightsNeedRebuilding)
             return;
 
-        CreateComputeBuffer<LightBufferObject>(ref _lightsBuffer, _lightBufferObjects, 28);
+        CreateComputeBuffer<LightBufferObject>(ref _lightsBuffer, _lightBufferObjects, 44);
     }
 
     private void RebuildMeshObjectBuffers()

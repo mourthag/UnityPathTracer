@@ -11,15 +11,16 @@ public enum PtLightType {
 public struct LightBufferObject {
     public int Type;
     public Vector3 Position;
+    public Vector3 Direction;
     public Vector3 Intensity;
+    public float SpotAngle;
 
     public LightBufferObject(PathTracingLight ptLight){
         this.Type = (int)ptLight.Type;
-        if(ptLight.Type == PtLightType.Directional)
-            this.Position = ptLight.transform.forward;
-        else
-            this.Position = ptLight.transform.position;
+        this.Position = ptLight.transform.position;
+        this.Direction = ptLight.transform.forward;
         this.Intensity = ptLight.Intensity * new Vector3(ptLight.Color.r, ptLight.Color.g, ptLight.Color.b);
+        this.SpotAngle = ptLight.SpotAngle;
     }
 }
 
@@ -29,6 +30,7 @@ public class PathTracingLight : MonoBehaviour
     public PtLightType Type;
     public Color Color;
     public float Intensity = 1.0f;
+    public float SpotAngle = 90.0f;
 
     
     public void ImportParametersFromUnityLight(){
@@ -48,6 +50,7 @@ public class PathTracingLight : MonoBehaviour
                 break;
             case LightType.Spot:
                 this.Type = PtLightType.Spot;
+                SpotAngle = light.spotAngle;
                 break;
             default:
                 this.Type = PtLightType.Point;

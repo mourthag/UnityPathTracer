@@ -19,6 +19,18 @@ void CastShadowRay(Ray ray, inout RayHit bestHit, inout float t)
 	geometry.Intersect(ray, bestHit, t);
 }
 
+
+struct LightBufferObject{
+    int Type;
+    float3 Position;
+    float3 Direction;
+    float3 Intensity;
+    float SpotAngle;
+};
+
+
+StructuredBuffer<LightBufferObject> _Lights;
+
 //=======================================
 //=-------------------------------------=
 //=------------Light Types--------------=
@@ -26,6 +38,8 @@ void CastShadowRay(Ray ray, inout RayHit bestHit, inout float t)
 //=======================================
 
 interface Light{
+
+    void Init(LightBufferObject obj);
 
     //should return a direction that points from pos to a point on the light source 
     float3 Sample(float3 pos);
@@ -39,6 +53,12 @@ class PointLight : Light {
     float3 Position;
     float3 Intensity;
     
+    void Init(LightBufferObject obj)
+    {
+        Position = obj.Position;
+        Intensity = obj.Intensity;
+    }
+    
     float3 Sample(float3 pos){
         return normalize(Position - pos);
     }
@@ -51,10 +71,8 @@ class PointLight : Light {
     float3 GetContribution(Ray ray){
         float3 contribution;
 
-        //Check shadowing?
-
         const float distance = length(Position- ray.origin);
-        //Prevent inf -> Bakery Falloff
+        
         contribution = Intensity / pow(max(distance, 0.01), 2.0);
 
         return contribution;
@@ -65,6 +83,12 @@ class PointLight : Light {
 class DirectionalLight : Light {
     float3 Direction;
     float3 Intensity;
+    
+    void Init(LightBufferObject obj)
+    {
+        Direction = obj.Position;
+        Intensity = obj.Intensity;
+    }
 
     float3 Sample(float3 pos){
         return normalize(-Direction);
@@ -82,20 +106,56 @@ class DirectionalLight : Light {
     }
 };
 
+class SpotLight : Light {
+    float3 Position;
+    float3 Direction;
+    float angle;
+    float3 Intensity;
+    
+    
+    void Init(LightBufferObject obj)
+    {
+        Position = obj.Position;
+        Direction = obj.Direction;
+        Intensity = obj.Intensity;
+        angle = obj.SpotAngle;
+    }
+
+
+    float3 Sample(float3 pos){
+        return normalize(Position - pos);
+    }
+
+    bool IsVisible(Ray shadowRay, RayHit shadowRayIntersection, float t)
+    {
+        return t > length(Position - shadowRay.origin);
+    }
+
+    float3 GetContribution(Ray ray){
+        float3 contribution;
+
+        const float theta = dot(ray.direction, -Direction);
+        const float cutOff = cos(radians(angle));
+
+        if(theta > cutOff)
+        {
+            const float distance = length(Position- ray.origin);
+            
+            contribution = Intensity / pow(max(distance, 0.01), 2.0);
+
+            return contribution;
+        }
+        else 
+            return (float3)0;
+
+    }
+};
+
 //=======================================
 //=-------------------------------------=
 //=------------LightBuffer--------------=
 //=-------------------------------------=
 //=======================================
-
-struct LightBufferObject{
-    int Type;
-    float3 Position;
-    float3 Intensity;
-};
-
-
-StructuredBuffer<LightBufferObject> _Lights;
 
 int GetRandomLightID()
 {
@@ -115,17 +175,14 @@ float3 SampleLight(int id, float3 pos)
     if(light.Type == 0)
     {
         PointLight pl;
-        pl.Position = light.Position;
-        pl.Intensity = light.Intensity;
+        pl.Init(light);
         return pl.Sample(pos);
     }
     //SpotLight
     else if(light.Type == 1)
     {
-        //TODO
-        PointLight sl;
-        sl.Position = light.Position;
-        sl.Intensity = light.Intensity;
+        SpotLight sl;
+        sl.Init(light);
         return sl.Sample(pos);
 
     }
@@ -133,14 +190,12 @@ float3 SampleLight(int id, float3 pos)
     else if(light.Type == 2)
     {
         DirectionalLight dl;
-        dl.Direction = light.Position;
-        dl.Intensity = light.Intensity;
+        dl.Init(light);
         return dl.Sample(pos);
 
     }
     PointLight pl;
-    pl.Position = light.Position;
-    pl.Intensity = light.Intensity;
+    pl.Init(light);
     return pl.Sample(pos);
 }
 
@@ -156,17 +211,14 @@ float3 GetContribution(int id, Ray ray)
     if(light.Type == 0)
     {
         PointLight pl;
-        pl.Position = light.Position;
-        pl.Intensity = light.Intensity;
+        pl.Init(light);
         return pl.GetContribution(ray) * pl.IsVisible(ray, hit, distance);
     }
     //SpotLight
     else if(light.Type == 1)
     {
-        //TODO
-        PointLight sl;
-        sl.Position = light.Position;
-        sl.Intensity = light.Intensity;
+        SpotLight sl;
+        sl.Init(light);
         return sl.GetContribution(ray) * sl.IsVisible(ray, hit, distance);
 
     }
@@ -174,14 +226,12 @@ float3 GetContribution(int id, Ray ray)
     else if(light.Type == 2)
     {
         DirectionalLight dl;
-        dl.Direction = light.Position;
-        dl.Intensity = light.Intensity;
+        dl.Init(light);
         return dl.GetContribution(ray) * dl.IsVisible(ray, hit, distance);
 
     }
     PointLight pl;
-    pl.Position = light.Position;
-    pl.Intensity = light.Intensity;
+    pl.Init(light);
     return pl.GetContribution(ray) * pl.IsVisible(ray, hit, distance);
 }
 
