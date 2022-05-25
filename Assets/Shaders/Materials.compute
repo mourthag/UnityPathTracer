@@ -2,7 +2,6 @@
 #define MATERIALS_H
 
 #include "Defines.compute"
-#include "Lights.compute"
 
 //=======================================
 //=-------------------------------------=
@@ -27,7 +26,7 @@ float Schlicks_Approx(float cosine, float refractive_index)
 
 float3 fresnelSchlick(float cosTheta, float3 F0)
 {
-    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+    return F0 + (1.0 - F0) * pow(saturate(1.0 - cosTheta), 5.0);
 }
 
 float3 halfVector(const float3 l, const float3 v) {
@@ -46,6 +45,7 @@ float NDF_GGX(const float3 N, const float3 H, const float alpha)
 
 float GeometrySchlickGGX(float NdotV, float roughness)
 {
+    //TODO different k for sampling strats?
     float r = (roughness + 1.0);
     float k = (r * r) / 8.0;
 
@@ -89,6 +89,8 @@ struct MaterialBufferObject
 
 
 StructuredBuffer<MaterialBufferObject> _Materials;
+
+#include "Lights.compute"
 
 class BufferMaterial
 {
@@ -170,14 +172,15 @@ class BufferMaterial
             const float3 numerator = D * F * G;
             const float denominator = 4.0 * max(dot(hit.normal, V), 0.0) * max(dot(hit.normal, reflectionRay.direction), 0.0) + 0.00001;
 
-            reflectionRay.energy = inRay.energy * mat.albedo * numerator / denominator;
+            reflectionRay.energy = inRay.energy * numerator / (denominator * specChance);
             if(SamplingStrategy == 0)
-                reflectionRay.energy /= (D * dot(H, hit.normal));
+                reflectionRay.energy /= abs(D * dot(H, hit.normal));
         }
         else {
             //diffuse
+            const float kd = (1.0 - specChance);
             reflectionRay = CreateRay(rayOrigin, rayDirection, RAYTYPE_REFLECTION);
-            reflectionRay.energy = inRay.energy * mat.albedo * (1.0 - specChance);
+            reflectionRay.energy = inRay.energy * 2.0 / kd *  mat.albedo * sdot(hit.normal, rayDirection); ;
 
         }
 
@@ -199,7 +202,6 @@ class BufferMaterial
 #ifdef USE_LIGHTS
         else if(SamplingStrategy == 1)
         {
-            reflectionRay.type = RAYTYPE_SHADOW;
             attenuation = reflectionRay.energy * GetContribution(lightId, reflectionRay);
         }
 #endif
@@ -223,7 +225,7 @@ class BufferMaterial
         {
             float3 rayOrigin = hit.position - hit.normal * 0.0001f;
 
-            float refractive_index = hit.isFrontFace ? mat.ior : 1.0 / mat.ior;
+            float refractive_index = hit.isFrontFace ? 1.0 / mat.ior : mat.ior;
             float cos_theta = min(dot(inRay.direction, -hit.normal), 1.0);
             float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
@@ -234,6 +236,7 @@ class BufferMaterial
 
             if (cannot_refract || Schlick_term > rand())
             {
+                rayOrigin = hit.position + hit.normal * 0.0001f;
                 rayDirection = reflect(inRay.direction, hit.normal);
             }
             else

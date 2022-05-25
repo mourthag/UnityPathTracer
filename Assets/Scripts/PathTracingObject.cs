@@ -26,6 +26,8 @@ public class PathTracingObject : MonoBehaviour
         {
             MaterialObject mat = new MaterialObject();
 
+            mat.IOR = 1.459f;
+
             mat.Albedo.x = material.GetColor("_Color").r;
             mat.Albedo.y = material.GetColor("_Color").g;
             mat.Albedo.z = material.GetColor("_Color").b;
@@ -36,6 +38,13 @@ public class PathTracingObject : MonoBehaviour
 
             mat.Metalness = material.GetFloat("_Metallic");
             mat.Roughness = 1.0f - material.GetFloat("_Glossiness") - 0.0001f;
+
+            if (material.name.Contains( "Glass"))
+            {
+                mat.Transmission = new Vector3(1, 1, 1);
+                mat.Albedo = new Vector3(0, 0, 0);
+            }
+
             Materials.Add(mat);
         }
     }

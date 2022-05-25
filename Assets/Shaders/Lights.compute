@@ -9,6 +9,7 @@ void CastShadowRay(Ray ray, inout RayHit bestHit, inout float t)
     t = 1.#INF;
 	bestHit = CreateRayHit();
 		
+    ray.type = RAYTYPE_SHADOW;
 #ifdef USE_BVH
 	BVH b;
 	iGeometry geometry = b;

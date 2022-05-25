@@ -7,7 +7,6 @@
 
 #include "Defines.compute"
 #include "Materials.compute"
-#include "Geometries.compute"
 
 RWTexture2D<float4> Result;
 
@@ -65,8 +64,6 @@ float3 Shade(inout Ray ray, RayHit hit, float t, inout RayBuffer rb)
 		return attenuation;
 	}
 	else {
-		ray.energy = 0.0f;
-
 		//render sky
 		// Sample the skybox and write it
 		float theta = acos(ray.direction.y) / -PI;
@@ -99,10 +96,13 @@ void CSMain(uint3 groupid : SV_GroupThreadID, uint3 dpID : SV_DispatchThreadID)
 	[unroll(10)]
 	while (rb.currentSize > 0)
 	{
-		Ray ray = rb.Pop();
+		Ray ray = rb.Pop();		
+		if (any(ray.energy < 0))
+			continue;
 		Trace(ray, hit, t);
         result += ray.energy * Shade(ray, hit, t, rb);
 	}
+	result = max(result, 0.0f);
 
     //write result
     float3 prevResult = PrevResult[dpID.xy].rgb;
