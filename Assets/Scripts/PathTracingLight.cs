@@ -5,7 +5,8 @@ using UnityEngine;
 public enum PtLightType {
     Point,
     Spot,
-    Directional
+    Directional,
+    Area
 }
 
 public struct LightBufferObject {
@@ -51,6 +52,9 @@ public class PathTracingLight : MonoBehaviour
             case LightType.Spot:
                 this.Type = PtLightType.Spot;
                 SpotAngle = light.spotAngle;
+                break;            
+            case LightType.Area:
+                this.Type = PtLightType.Area;
                 break;
             default:
                 this.Type = PtLightType.Point;

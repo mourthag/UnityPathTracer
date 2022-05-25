@@ -151,6 +151,51 @@ class SpotLight : Light {
     }
 };
 
+class AreaLight : Light {
+    float3 Position;
+    float3 Direction;
+    float2 AreaSize;
+    float3 Intensity;
+    
+    
+    void Init(LightBufferObject obj)
+    {
+        Position = obj.Position;
+        Direction = obj.Direction;
+        Intensity = obj.Intensity;
+        AreaSize = float2(1,1);
+    }
+
+
+    float3 Sample(float3 pos){
+
+        const float x = rand() * AreaSize.x - AreaSize.x / 2.0;
+        const float y = rand() * AreaSize.y - AreaSize.y / 2.0; 
+        const float z = 0;
+
+        const float3x3 tangentSpace = GetTangentSpace(Direction);
+        const float3 offset = mul(tangentSpace, float3(x,y,z));
+
+        return normalize(Position + offset - pos);
+    }
+
+    bool IsVisible(Ray shadowRay, RayHit shadowRayIntersection, float t)
+    {
+        return t > length(Position - shadowRay.origin);
+    }
+
+    float3 GetContribution(Ray ray){
+        float3 contribution;
+
+        const float distance = length(Position- ray.origin);
+        
+        contribution = Intensity / pow(max(distance, 0.01), 2.0);
+
+        return contribution;
+
+    }
+};
+
 //=======================================
 //=-------------------------------------=
 //=------------LightBuffer--------------=
@@ -193,6 +238,14 @@ float3 SampleLight(int id, float3 pos)
         dl.Init(light);
         return dl.Sample(pos);
 
+    }    
+    //AreaLight
+    else if(light.Type == 3)
+    {
+        AreaLight al;
+        al.Init(light);
+        return al.Sample(pos);
+
     }
     PointLight pl;
     pl.Init(light);
@@ -228,6 +281,14 @@ float3 GetContribution(int id, Ray ray)
         DirectionalLight dl;
         dl.Init(light);
         return dl.GetContribution(ray) * dl.IsVisible(ray, hit, distance);
+
+    }
+    //DirectionalLight
+    else if(light.Type == 3)
+    {
+        AreaLight al;
+        al.Init(light);
+        return al.GetContribution(ray) * al.IsVisible(ray, hit, distance);
 
     }
     PointLight pl;

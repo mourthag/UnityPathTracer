@@ -140,7 +140,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &32062748
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -166,10 +166,10 @@ Light:
   m_GameObject: {fileID: 32062747}
   m_Enabled: 1
   serializedVersion: 10
-  m_Type: 2
+  m_Type: 3
   m_Shape: 0
   m_Color: {r: 1, g: 0.99501973, b: 0.8160377, a: 1}
-  m_Intensity: 1
+  m_Intensity: 10
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -208,7 +208,7 @@ Light:
     serializedVersion: 2
     m_Bits: 4294967295
   m_RenderingLayerMask: 1
-  m_Lightmapping: 1
+  m_Lightmapping: 2
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
@@ -226,13 +226,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 32062747}
-  m_LocalRotation: {x: -0, y: 0.08516027, z: -0, w: 0.9963673}
-  m_LocalPosition: {x: -4.068, y: 0.936, z: -11.593}
+  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: -2.621, y: 1.69, z: -11.94}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 4
-  m_LocalEulerAnglesHint: {x: 0, y: 9.77, z: 0}
+  m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
 --- !u!1 &115749618 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -7124872180351362833, guid: bd24821420bf4e34b933ece858922c70, type: 3}
@@ -724,7 +724,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!108 &705507994
 Light:
   m_ObjectHideFlags: 0
@@ -1060,6 +1060,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   PathTracingShader: {fileID: 7200000, guid: 17846c572b9261f469ab6467063d7b67, type: 3}
   SkyboxTexture: {fileID: 2800000, guid: 5a3d33bad32f84a49b950bd66c4888f7, type: 3}
+  OutputType: 0
   MaxSamples: 2048
   UseBVH: 1
   BackfaceCulling: 0
@@ -1559,7 +1560,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1694032861
 MonoBehaviour:
   m_ObjectHideFlags: 0
