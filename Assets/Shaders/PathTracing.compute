@@ -20,6 +20,13 @@ float2 _PixelOffset;
 Texture2D<float4> _SkyboxTexture;
 SamplerState sampler_SkyboxTexture;
 
+/*
+* 0 : Shaded
+* 1 : Normals
+* 2 : UVs
+* 3 : WorldPosition
+*/
+int OutputType;
 
 Ray CreateCameraRay(float2 uv)
 {
@@ -58,8 +65,26 @@ float3 Shade(inout Ray ray, RayHit hit, float t, inout RayBuffer rb)
 	{
 		float3 attenuation = float3(0.0f, 0.0f, 0.0f);
         
-        BufferMaterial mat;
-    	mat.Scatter(hit.matID, ray, hit, attenuation, rb);
+		switch(OutputType)
+		{
+
+			case 1:
+				attenuation = hit.normal;
+				break;
+			case 2:
+				attenuation = float3(hit.uv, 0.0);
+				break;
+			case 3:
+				attenuation = hit.position;
+				break;			
+			case 0:  
+
+			default:      
+				BufferMaterial mat;
+				mat.Scatter(hit.matID, ray, hit, attenuation, rb);
+				break;
+		}
+
 
 		return attenuation;
 	}

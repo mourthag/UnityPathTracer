@@ -4,6 +4,13 @@ using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
+public enum OutputType {
+    Shaded = 0,
+    Normals = 1,
+    UVs = 2,
+    WorldPosition = 3
+}
+
 public class PathTracer : MonoBehaviour
 {
     private static bool _meshObjectsNeedRebuilding = false;
@@ -52,6 +59,8 @@ public class PathTracer : MonoBehaviour
     public ComputeShader PathTracingShader;
 
     public Texture SkyboxTexture;
+
+    public OutputType OutputType;
 
     public uint MaxSamples;
     public bool UseBVH;
@@ -131,13 +140,13 @@ public class PathTracer : MonoBehaviour
         {
             //Fetch Mesh and MeshRenderer to access their data
             var meshRenderer = ptObject.GetComponent<MeshRenderer>();
-            var mesh = ptObject.GetComponent<MeshFilter>().sharedMesh;
+            var mesh = ptObject.GetComponent<MeshFilter>().mesh;
 
             IEnumerable<Vertex> query = mesh.vertices.Zip(mesh.normals,
                 (position, normal) => new Vertex
                 {
                     Position = position,
-                    Normal = normal,
+                    Normal = normal.normalized,
                 });
             if(mesh.uv.Length > 0)
                 query = mesh.uv.Zip(query, (uv, vert) => new Vertex{
@@ -164,7 +173,7 @@ public class PathTracer : MonoBehaviour
                 int matIndex = _materialBufferObjects.Count();
                 _materialBufferObjects.Add(ptObject.Materials[i]);
 
-                Matrix4x4 normalMat = meshRenderer.localToWorldMatrix.inverse.transpose;
+                Matrix4x4 normalMat = meshRenderer.worldToLocalMatrix.transpose;
 
                 //Create an object to boundle information of a Mesh and add it
                 MeshObject meshObject = new MeshObject
@@ -274,6 +283,8 @@ public class PathTracer : MonoBehaviour
 
     private void SetShaderParameters()
     {
+        PathTracingShader.SetInt("OutputType", (int)OutputType);
+
         PathTracingShader.SetTexture(0, "Result", _target);
         PathTracingShader.SetTexture(0, "PrevResult", _prevResults);
         PathTracingShader.SetFloat("_CurrentSample", _currentSample);
