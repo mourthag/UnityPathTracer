@@ -27,6 +27,7 @@ struct LightBufferObject{
     float3 Direction;
     float3 Intensity;
     float SpotAngle;
+    float2 AreaSize;
 };
 
 

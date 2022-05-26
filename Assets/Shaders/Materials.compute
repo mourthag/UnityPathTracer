@@ -172,7 +172,7 @@ class BufferMaterial
             const float3 numerator = D * F * G;
             const float denominator = 4.0 * max(dot(hit.normal, V), 0.0) * max(dot(hit.normal, reflectionRay.direction), 0.0) + 0.00001;
 
-            reflectionRay.energy = inRay.energy * numerator / (denominator * specChance);
+            reflectionRay.energy = inRay.energy * numerator * mat.albedo / (denominator * specChance);
             if(SamplingStrategy == 0)
                 reflectionRay.energy /= abs(D * dot(H, hit.normal));
         }

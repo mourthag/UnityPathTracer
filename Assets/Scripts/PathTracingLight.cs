@@ -15,6 +15,7 @@ public struct LightBufferObject {
     public Vector3 Direction;
     public Vector3 Intensity;
     public float SpotAngle;
+    public Vector2 AreaSize;
 
     public LightBufferObject(PathTracingLight ptLight){
         this.Type = (int)ptLight.Type;
@@ -22,6 +23,7 @@ public struct LightBufferObject {
         this.Direction = ptLight.transform.forward;
         this.Intensity = ptLight.Intensity * new Vector3(ptLight.Color.r, ptLight.Color.g, ptLight.Color.b);
         this.SpotAngle = ptLight.SpotAngle;
+        this.AreaSize = ptLight.AreaSize;
     }
 }
 
@@ -32,6 +34,7 @@ public class PathTracingLight : MonoBehaviour
     public Color Color;
     public float Intensity = 1.0f;
     public float SpotAngle = 90.0f;
+    public Vector2 AreaSize = new Vector2(1,1);
 
     
     public void ImportParametersFromUnityLight(){
@@ -55,6 +58,7 @@ public class PathTracingLight : MonoBehaviour
                 break;            
             case LightType.Area:
                 this.Type = PtLightType.Area;
+                this.AreaSize = light.areaSize;
                 break;
             default:
                 this.Type = PtLightType.Point;
