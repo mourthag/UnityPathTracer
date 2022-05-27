@@ -305,7 +305,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: bd24821420bf4e34b933ece858922c70, type: 3}
       propertyPath: m_Name
-      value: uploads_files_3102493_Porche+Cayman+GT4
+      value: Porsche
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: bd24821420bf4e34b933ece858922c70, type: 3}
       propertyPath: m_IsActive
@@ -1827,19 +1827,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 336df749e4260ae45aaa82f8a1769a1d, type: 3}
       propertyPath: m_LocalScale.x
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 336df749e4260ae45aaa82f8a1769a1d, type: 3}
       propertyPath: m_LocalScale.y
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 336df749e4260ae45aaa82f8a1769a1d, type: 3}
       propertyPath: m_LocalScale.z
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 336df749e4260ae45aaa82f8a1769a1d, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 4.4766326
+      value: -2.69
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 336df749e4260ae45aaa82f8a1769a1d, type: 3}
       propertyPath: m_LocalPosition.y
@@ -1847,7 +1847,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 336df749e4260ae45aaa82f8a1769a1d, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -14.244571
+      value: -11.16
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 336df749e4260ae45aaa82f8a1769a1d, type: 3}
       propertyPath: m_LocalRotation.w
@@ -2364,7 +2364,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &8424621667440009553
 MonoBehaviour:
   m_ObjectHideFlags: 0
