@@ -134,7 +134,7 @@ struct BVHNode
 StructuredBuffer<BVHNode> _BVHNodes;
 int RootNode;
 
-const static int STACKSIZE = 32;
+const static int STACKSIZE = 40;
 void Push(int newEntry, inout int stack[STACKSIZE], inout int currentSize)
 {
     if (currentSize >= STACKSIZE)

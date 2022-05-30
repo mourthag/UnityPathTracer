@@ -370,7 +370,16 @@ public class PathTracer : MonoBehaviour
 
         TimeSpan renderTime = DateTime.Now - _startTime;
 
-        Debug.Log("Sample " + _currentSample + " took " + renderTime.TotalSeconds + " seconds. This is " + (_currentSample + 1)/renderTime.TotalSeconds + " spp per second!");
+        int numPixels = Screen.width * Screen.height;
+        double sppps = (_currentSample + 1)/renderTime.TotalSeconds;
+        double sps = numPixels * (_currentSample + 1) / renderTime.TotalSeconds;
+        double remainingMinutes = (MaxSamples - _currentSample - 1) / (sppps * 60);
+
+        Debug.Log("Sample " + _currentSample + " took " + renderTime.TotalSeconds + 
+                    " seconds. This is " + sppps + " spp or " 
+                    + sps + " samples per second! "
+                    + "Currently estimated remaining render time: " + remainingMinutes + " minutes!");
+
         _currentSample++;
     }
     private void InitRenderTexture()

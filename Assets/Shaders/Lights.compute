@@ -4,6 +4,8 @@
 #include "Defines.compute"
 #include "Geometries.compute"
 
+//#define LIGHT_PRIMARY_VISIBLE
+
 void CastShadowRay(Ray ray, inout RayHit bestHit, inout float t)
 {
     t = 1.#INF;
@@ -46,6 +48,7 @@ interface Light{
     //should return a direction that points from pos to a point on the light source 
     float3 Sample(float3 pos);
 
+    void Intersect(Ray ray, inout RayHit hit, inout float t);
     bool IsVisible(Ray shadowRay, RayHit shadowRayIntersection, float t);
 
     float3 GetContribution(Ray ray);
@@ -73,6 +76,11 @@ class PointLight : Light {
     float3 GetContribution(Ray ray){
         float3 contribution;
 
+        if(ray.type == RAYTYPE_PRIMARY)
+        {
+            return Intensity;
+        }
+
         const float distance = length(Position- ray.origin);
         
         contribution = Intensity / pow(max(distance, 0.01), 2.0);
@@ -80,6 +88,24 @@ class PointLight : Light {
         return contribution;
     }
 
+    void Intersect(Ray ray, inout RayHit hit, inout float t)
+    {
+#ifndef LIGHT_PRIMARY_VISIBLE
+    if(ray.type == RAYTYPE_PRIMARY)
+            return;
+#endif
+
+        float3 distance = Position - ray.origin;
+        if(dot(normalize(distance), ray.direction) > 0.99)
+        {
+            float t_intersect = length(distance);
+            if(t_intersect > 0 && t_intersect < t)
+            {
+                t = t_intersect;
+                hit.lightContrib =  GetContribution(ray);
+            }
+        }
+    }
 };
 
 class DirectionalLight : Light {
@@ -104,6 +130,22 @@ class DirectionalLight : Light {
     float3 GetContribution(Ray ray){
 
         return Intensity;
+    }
+
+    void Intersect(Ray ray, inout RayHit hit, inout float t)
+    {
+#ifndef LIGHT_PRIMARY_VISIBLE
+    if(ray.type == RAYTYPE_PRIMARY)
+            return;
+#endif
+
+        if(abs(dot(Direction, ray.direction)) < 0.99)
+        {
+            if(t == 1.#INF)
+            {
+                hit.lightContrib = GetContribution(ray);
+            }
+        }
     }
 };
 
@@ -140,6 +182,11 @@ class SpotLight : Light {
 
         if(theta > cutOff)
         {
+            if(ray.type == RAYTYPE_PRIMARY)
+            {
+                return Intensity;
+            }
+
             const float distance = length(Position- ray.origin);
             
             contribution = Intensity / pow(max(distance, 0.01), 2.0);
@@ -149,6 +196,25 @@ class SpotLight : Light {
         else 
             return (float3)0;
 
+    }
+        
+    void Intersect(Ray ray, inout RayHit hit, inout float t)
+    {
+#ifndef LIGHT_PRIMARY_VISIBLE
+    if(ray.type == RAYTYPE_PRIMARY)
+            return;
+#endif
+
+        float3 distance = Position - ray.origin;
+        if(dot(normalize(distance), ray.direction) > 1.0-EPSILON)
+        {
+            float t_intersect = length(distance);
+            if(t_intersect > 0 && t_intersect < t)
+            {
+                t = t_intersect;
+                hit.lightContrib =  GetContribution(ray);
+            }
+        }
     }
 };
 
@@ -162,9 +228,9 @@ class AreaLight : Light {
     void Init(LightBufferObject obj)
     {
         Position = obj.Position;
-        Direction = obj.Direction;
+        Direction = normalize(obj.Direction);
         Intensity = obj.Intensity;
-        AreaSize = float2(1,1);
+        AreaSize = obj.AreaSize.yx;
     }
 
 
@@ -185,15 +251,57 @@ class AreaLight : Light {
         return t > length(Position - shadowRay.origin);
     }
 
-    float3 GetContribution(Ray ray){
+    float3 GetContribution(Ray ray, RayHit hit){
         float3 contribution;
 
-        const float distance = length(Position- ray.origin);
+        if(ray.type == RAYTYPE_PRIMARY)
+        {
+            return Intensity;
+        }
+
+        const float distance = length(hit.position- ray.origin);
         
         contribution = Intensity / pow(max(distance, 0.01), 2.0);
 
         return contribution;
 
+    }
+
+    void Intersect(Ray ray, inout RayHit hit, inout float t)
+    {
+#ifndef LIGHT_PRIMARY_VISIBLE
+    if(ray.type == RAYTYPE_PRIMARY)
+            return;
+#endif
+
+        const float denom = dot(-Direction, ray.direction);
+        if(denom > EPSILON)
+        {
+            const float3 dist = Position - ray.origin;
+            const float t_intersect = dot(dist, -Direction) / denom;
+
+            const float3 hitPosition  = ray.origin + t_intersect * ray.direction; 
+            const float3x3 tangentSpace = GetTangentSpace(Direction);
+            const float3 v1 = mul(tangentSpace, float3(1,0,0));
+            const float3 v2 = mul(tangentSpace, float3(0,1,0));
+
+            if(t_intersect > 0 && t_intersect < t
+                &&  abs(dot(hitPosition - Position, v1)) < AreaSize.x / 2.0
+                &&  abs(dot(hitPosition - Position, v2)) < AreaSize.y / 2.0)
+            {
+                t = t_intersect;
+                hit.position = hitPosition;
+                hit.lightContrib = GetContribution(ray, hit);
+            }
+        }
+    }
+
+    float3 GetContribution(Ray ray)
+    {
+        float t = 1.#INF;
+        RayHit hit = CreateRayHit();
+        Intersect(ray, hit, t);
+        return hit.lightContrib;
     }
 };
 
@@ -202,6 +310,51 @@ class AreaLight : Light {
 //=------------LightBuffer--------------=
 //=-------------------------------------=
 //=======================================
+
+void IntersectLights(Ray ray, inout RayHit hit, inout float t)
+{
+    
+    uint count, stride;
+	_Lights.GetDimensions(count, stride);
+    for(uint lightId = 0; lightId < count; lightId++)
+    {
+        const LightBufferObject light = _Lights[lightId];
+        //PointLight
+        if(light.Type == 0)
+        {
+            PointLight pl;
+            pl.Init(light);
+            pl.Intersect(ray, hit, t);
+        }
+        //SpotLight
+        else if(light.Type == 1)
+        {
+            SpotLight sl;
+            sl.Init(light);
+            sl.Intersect(ray, hit, t);
+
+        }
+        //DirectionalLight
+        else if(light.Type == 2)
+        {
+            DirectionalLight dl;
+            dl.Init(light);
+            dl.Intersect(ray, hit, t);
+
+        }    
+        //AreaLight
+        else if(light.Type == 3)
+        {
+            AreaLight al;
+            al.Init(light);
+            al.Intersect(ray, hit, t);
+
+        }
+        PointLight pl;
+        pl.Init(light);
+        pl.Intersect(ray, hit, t);
+    }
+}
 
 int GetRandomLightID()
 {

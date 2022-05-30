@@ -57,10 +57,19 @@ void Trace(Ray ray, inout RayHit bestHit, inout float t)
 	iGeometry geometry = m;
 #endif
 	geometry.Intersect(ray, bestHit, t);
+
+
+#ifdef USE_LIGHTS
+	IntersectLights(ray, bestHit, t);
+#endif
+
 }
 
 float3 Shade(inout Ray ray, RayHit hit, float t, inout RayBuffer rb)
-{	
+{	if(any(hit.lightContrib))
+	{
+		return hit.lightContrib;
+	}
 	if (hit.matID < MAX_MATERIALS)
 	{
 		float3 attenuation = float3(0.0f, 0.0f, 0.0f);

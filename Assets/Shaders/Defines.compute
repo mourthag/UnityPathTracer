@@ -5,7 +5,7 @@ float2 _Pixel;
 float _Seed;
 
 static const float PI = 3.14159265f;
-static const float EPSILON = 1e-8;
+static const float EPSILON = 1e-6;
 
 const static int MAX_DEPTH = 24;
 const static int NUM_GEOMETRIES = 1;
@@ -132,6 +132,7 @@ struct RayHit {
 	float2 uv;
 	int matID;
 	bool isFrontFace;
+	float3 lightContrib;
 };
 
 RayHit CreateRayHit() {
@@ -141,6 +142,7 @@ RayHit CreateRayHit() {
 	hit.uv = float2(0.0f, 0.0f);
 	hit.matID = MAX_MATERIALS;
 	hit.isFrontFace = true;
+	hit.lightContrib = float3(0.0f, 0.0f, 0.0f);
 	return hit;						  
 }
 

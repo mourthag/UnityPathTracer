@@ -197,6 +197,7 @@ class BufferMaterial
 
         if(SamplingStrategy == 0)
         {
+            reflectionRay.type = RAYTYPE_REFLECTION;
             rb.Push(reflectionRay);
         }
 #ifdef USE_LIGHTS
