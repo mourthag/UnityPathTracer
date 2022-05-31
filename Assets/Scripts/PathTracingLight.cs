@@ -11,16 +11,14 @@ public enum PtLightType {
 
 public struct LightBufferObject {
     public int Type;
-    public Vector3 Position;
-    public Vector3 Direction;
+    public Matrix4x4 LocalToWorld;
     public Vector3 Intensity;
     public float SpotAngle;
     public Vector2 AreaSize;
 
     public LightBufferObject(PathTracingLight ptLight){
         this.Type = (int)ptLight.Type;
-        this.Position = ptLight.transform.position;
-        this.Direction = ptLight.transform.forward;
+        this.LocalToWorld = ptLight.transform.localToWorldMatrix;
         this.Intensity = ptLight.Intensity * new Vector3(ptLight.Color.r, ptLight.Color.g, ptLight.Color.b);
         this.SpotAngle = ptLight.SpotAngle;
         this.AreaSize = ptLight.AreaSize;

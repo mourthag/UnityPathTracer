@@ -25,8 +25,7 @@ void CastShadowRay(Ray ray, inout RayHit bestHit, inout float t)
 
 struct LightBufferObject{
     int Type;
-    float3 Position;
-    float3 Direction;
+    float4x4 LocalToWorld;
     float3 Intensity;
     float SpotAngle;
     float2 AreaSize;
@@ -60,7 +59,7 @@ class PointLight : Light {
     
     void Init(LightBufferObject obj)
     {
-        Position = obj.Position;
+        Position = obj.LocalToWorld._m03_m13_m23;
         Intensity = obj.Intensity;
     }
     
@@ -114,7 +113,7 @@ class DirectionalLight : Light {
     
     void Init(LightBufferObject obj)
     {
-        Direction = obj.Position;
+        Direction = obj.LocalToWorld._m02_m12_m22;
         Intensity = obj.Intensity;
     }
 
@@ -158,8 +157,8 @@ class SpotLight : Light {
     
     void Init(LightBufferObject obj)
     {
-        Position = obj.Position;
-        Direction = obj.Direction;
+        Position = obj.LocalToWorld._m03_m13_m23;
+        Direction = obj.LocalToWorld._m02_m12_m22;
         Intensity = obj.Intensity;
         angle = obj.SpotAngle;
     }
@@ -220,30 +219,30 @@ class SpotLight : Light {
 
 class AreaLight : Light {
     float3 Position;
-    float3 Direction;
+    float3 Forward;
+    float3 Left;
+    float3 Up;
     float2 AreaSize;
     float3 Intensity;
     
     
     void Init(LightBufferObject obj)
     {
-        Position = obj.Position;
-        Direction = normalize(obj.Direction);
+        Position = obj.LocalToWorld._m03_m13_m23;
+        Forward = normalize(obj.LocalToWorld._m02_m12_m22);
+        Left = normalize(obj.LocalToWorld._m00_m10_m20);
+        Up = normalize(obj.LocalToWorld._m01_m11_m21);
         Intensity = obj.Intensity;
-        AreaSize = obj.AreaSize.yx;
+        AreaSize = obj.AreaSize;
     }
 
 
     float3 Sample(float3 pos){
 
         const float x = rand() * AreaSize.x - AreaSize.x / 2.0;
-        const float y = rand() * AreaSize.y - AreaSize.y / 2.0; 
-        const float z = 0;
+        const float y = rand() * AreaSize.y - AreaSize.y / 2.0;
 
-        const float3x3 tangentSpace = GetTangentSpace(Direction);
-        const float3 offset = mul(tangentSpace, float3(x,y,z));
-
-        return normalize(Position + offset - pos);
+        return normalize(Position + x * Left + y * Up - pos);
     }
 
     bool IsVisible(Ray shadowRay, RayHit shadowRayIntersection, float t)
@@ -274,20 +273,17 @@ class AreaLight : Light {
             return;
 #endif
 
-        const float denom = dot(-Direction, ray.direction);
+        const float denom = dot(-Forward, ray.direction);
         if(denom > EPSILON)
         {
             const float3 dist = Position - ray.origin;
-            const float t_intersect = dot(dist, -Direction) / denom;
+            const float t_intersect = dot(dist, -Forward) / denom;
 
             const float3 hitPosition  = ray.origin + t_intersect * ray.direction; 
-            const float3x3 tangentSpace = GetTangentSpace(Direction);
-            const float3 v1 = mul(tangentSpace, float3(1,0,0));
-            const float3 v2 = mul(tangentSpace, float3(0,1,0));
 
             if(t_intersect > 0 && t_intersect < t
-                &&  abs(dot(hitPosition - Position, v1)) < AreaSize.x / 2.0
-                &&  abs(dot(hitPosition - Position, v2)) < AreaSize.y / 2.0)
+                &&  abs(dot(hitPosition - Position, Left)) < AreaSize.x / 2.0
+                &&  abs(dot(hitPosition - Position, Up)) < AreaSize.y / 2.0)
             {
                 t = t_intersect;
                 hit.position = hitPosition;
@@ -325,6 +321,7 @@ void IntersectLights(Ray ray, inout RayHit hit, inout float t)
             PointLight pl;
             pl.Init(light);
             pl.Intersect(ray, hit, t);
+            continue;
         }
         //SpotLight
         else if(light.Type == 1)
@@ -332,7 +329,7 @@ void IntersectLights(Ray ray, inout RayHit hit, inout float t)
             SpotLight sl;
             sl.Init(light);
             sl.Intersect(ray, hit, t);
-
+            continue;
         }
         //DirectionalLight
         else if(light.Type == 2)
@@ -340,7 +337,7 @@ void IntersectLights(Ray ray, inout RayHit hit, inout float t)
             DirectionalLight dl;
             dl.Init(light);
             dl.Intersect(ray, hit, t);
-
+            continue;
         }    
         //AreaLight
         else if(light.Type == 3)
@@ -348,7 +345,7 @@ void IntersectLights(Ray ray, inout RayHit hit, inout float t)
             AreaLight al;
             al.Init(light);
             al.Intersect(ray, hit, t);
-
+            continue;
         }
         PointLight pl;
         pl.Init(light);
