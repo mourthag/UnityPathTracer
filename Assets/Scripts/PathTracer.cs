@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
+using UnityEditor;
 
 public enum OutputType {
     Shaded = 0,
@@ -11,6 +12,7 @@ public enum OutputType {
     WorldPosition = 3
 }
 
+[ExecuteInEditMode]
 public class PathTracer : MonoBehaviour
 {
     private static bool _meshObjectsNeedRebuilding = false;
@@ -44,7 +46,7 @@ public class PathTracer : MonoBehaviour
     private static List<MeshObject> _meshObjects = new List<MeshObject>();
     private static List<Vertex> _vertices = new List<Vertex>();
     private static List<int> _indices = new List<int>();
-    private static List<PathTracingObject.MaterialObject> _materialBufferObjects = new List<PathTracingObject.MaterialObject>();
+    private static List<MaterialObject> _materialBufferObjects = new List<MaterialObject>();
     private static List<BVHBufferNode> _bvhBufferNodes = new List<BVHBufferNode>();
 
     private static List<LightBufferObject> _lightBufferObjects = new List<LightBufferObject>();
@@ -75,12 +77,66 @@ public class PathTracer : MonoBehaviour
     private uint _currentSample = 0;
     private Material _addMaterial;
 
+    private bool _isRendering = false;
+    private bool _isCreatingBVH = false;
+
     //Output image
     public bool SaveAsPNG;
     private bool _wasImageSaved;
 
     //Performance
     private DateTime _startTime;
+
+    public bool IsRendering()
+    {
+        return _isRendering;
+    }
+
+    public bool IsCreatingBVH()
+    {
+        return _isCreatingBVH;
+    }
+
+    public float GetProgress() {
+        return (float)_currentSample / MaxSamples;
+    }
+
+    public TimeSpan GetRemainingTime() {
+
+        TimeSpan renderTime = DateTime.Now - _startTime;
+        var remaining = renderTime.TotalSeconds * ((float)MaxSamples - _currentSample - 1)  / (_currentSample + 1);
+        return TimeSpan.FromSeconds(remaining);
+    }
+
+    public double GetSPS() {
+        if(_isRendering)
+        {
+            TimeSpan renderTime = DateTime.Now - _startTime;
+            return (_currentSample + 1) * Screen.width * Screen.height / renderTime.TotalSeconds;
+        }
+        return 0;
+    }
+    
+    public double GetSPPPS() {
+        if(_isRendering)
+        {
+            TimeSpan renderTime = DateTime.Now - _startTime;
+            return (_currentSample + 1)  / renderTime.TotalSeconds;
+        }
+        return 0;
+    }
+
+    public static int GetVertCount(){
+        return _vertices.Count;
+    }
+
+    public static int GetTriCount() {
+        return _indices.Count / 3;
+    }
+
+    public static int GetBVHNodeCount() {
+        return _bvhBufferNodes.Count;
+    }
 
     public static void RegisterObject(PathTracingObject obj)
     {
@@ -140,7 +196,7 @@ public class PathTracer : MonoBehaviour
         {
             //Fetch Mesh and MeshRenderer to access their data
             var meshRenderer = ptObject.GetComponent<MeshRenderer>();
-            var mesh = ptObject.GetComponent<MeshFilter>().mesh;
+            var mesh = ptObject.GetComponent<MeshFilter>().sharedMesh;
 
             IEnumerable<Vertex> query = mesh.vertices.Zip(mesh.normals,
                 (position, normal) => new Vertex
@@ -187,14 +243,12 @@ public class PathTracer : MonoBehaviour
                 _meshObjects.Add(meshObject);
             }
 
-
-
         }
 
         CreateComputeBuffer<MeshObject>(ref _meshObjectsBuffer, _meshObjects, 140);
         CreateComputeBuffer<Vertex>(ref _verticesBuffer, _vertices, 32);
         CreateComputeBuffer<int>(ref _indicesBuffer, _indices, 4);
-        CreateComputeBuffer<PathTracingObject.MaterialObject>(ref _materialBuffer, _materialBufferObjects, 48);
+        CreateComputeBuffer<MaterialObject>(ref _materialBuffer, _materialBufferObjects, 48);
         if (UseBVH)
         {
             CreateBVH();
@@ -212,6 +266,7 @@ public class PathTracer : MonoBehaviour
 
     private void CreateBVH()
     {
+        _isCreatingBVH = true;
         _bvhBufferNodes.Clear();
         Debug.Log("Total triangles: " + _indices.Count / 3);
         _bvhBuilder = new BVHBuilder(_meshObjects, _vertices, _indices);
@@ -232,6 +287,7 @@ public class PathTracer : MonoBehaviour
 
             _bvhBufferNodes.Add(bufferNode);
         }
+        _isCreatingBVH = false;
     }
 
     private static void CreateComputeBuffer<T>(ref ComputeBuffer buffer, List<T> data, int stride)
@@ -323,8 +379,16 @@ public class PathTracer : MonoBehaviour
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
+        _isRendering = Application.isPlaying;
+
         RebuildMeshObjectBuffers();
         RebuildLightsBuffer();
+        // Make sure we have a current render target
+        InitRenderTexture();
+
+        if(!_isRendering)
+            return;
+
         Render(destination);
 
         if(_currentSample >= MaxSamples && !_wasImageSaved)
@@ -342,12 +406,9 @@ public class PathTracer : MonoBehaviour
     private void Render(RenderTexture destination)
     {
 
-
         if (_currentSample >= MaxSamples)
             return;
 
-        // Make sure we have a current render target
-        InitRenderTexture();
 
         
         //Update Shader uniforms
@@ -368,19 +429,8 @@ public class PathTracer : MonoBehaviour
 
         Graphics.Blit(_target, destination);
 
-        TimeSpan renderTime = DateTime.Now - _startTime;
-
-        int numPixels = Screen.width * Screen.height;
-        double sppps = (_currentSample + 1)/renderTime.TotalSeconds;
-        double sps = numPixels * (_currentSample + 1) / renderTime.TotalSeconds;
-        double remainingMinutes = (MaxSamples - _currentSample - 1) / (sppps * 60);
-
-        Debug.Log("Sample " + _currentSample + " took " + renderTime.TotalSeconds + 
-                    " seconds. This is " + sppps + " spp or " 
-                    + sps + " samples per second! "
-                    + "Currently estimated remaining render time: " + remainingMinutes + " minutes!");
-
         _currentSample++;
+        EditorUtility.SetDirty(this);
     }
     private void InitRenderTexture()
     {
@@ -414,6 +464,6 @@ public class PathTracer : MonoBehaviour
         _meshObjectsBuffer?.Release();
         _materialBuffer?.Release();
         _bvhBuffer?.Release();
-        _lightsBuffer.Release();
+        _lightsBuffer?.Release();
     }
 }

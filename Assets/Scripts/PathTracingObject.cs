@@ -3,26 +3,29 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[Serializable]
+public struct MaterialObject
+{
+    public Vector3 Albedo, Emissive, Transmission;
+    public float IOR, Metalness, Roughness;
+}
+
 [RequireComponent(typeof(MeshRenderer))]
 [RequireComponent(typeof(MeshFilter))]
+[ExecuteInEditMode]
 public class PathTracingObject : MonoBehaviour
 {
-    [Serializable]
-    public struct MaterialObject
-    {
-        public Vector3 Albedo, Emissive, Transmission;
-        public float IOR, Metalness, Roughness;
-    }
+
 
     public List<MaterialObject> Materials = new List<MaterialObject>();
     private List<MaterialObject> _oldMaterials = new List<MaterialObject>();
 
-    // Start is called before the first frame update
-    void OnEnable()
+
+    public void LoadUnityMaterials() 
     {
-        PathTracer.RegisterObject(this);
+        Materials.Clear();
         var renderer = GetComponent<MeshRenderer>();
-        foreach(var material in renderer.materials)
+        foreach(var material in renderer.sharedMaterials)
         {
             MaterialObject mat = new MaterialObject();
 
@@ -47,6 +50,13 @@ public class PathTracingObject : MonoBehaviour
 
             Materials.Add(mat);
         }
+    }
+
+    // Start is called before the first frame update
+    void OnEnable()
+    {
+        PathTracer.RegisterObject(this);
+        
     }
 
     private void Update()

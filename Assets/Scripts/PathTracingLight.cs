@@ -68,7 +68,6 @@ public class PathTracingLight : MonoBehaviour
     // Start is called before the first frame update
     void OnEnable()
     {
-        ImportParametersFromUnityLight();
         PathTracer.RegisterLight(this);
 
     }
