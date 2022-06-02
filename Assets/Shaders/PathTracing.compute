@@ -78,7 +78,7 @@ float3 Shade(inout Ray ray, RayHit hit, float t, inout RayBuffer rb)
 		{
 
 			case 1:
-				attenuation = hit.normal;
+				attenuation = hit.normal * 0.5 + 0.5;
 				break;
 			case 2:
 				attenuation = float3(hit.uv, 0.0);

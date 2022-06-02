@@ -379,7 +379,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 743576e2a6ae27647bb6bff91451a004, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Materials: []
+  Materials:
+  - Albedo: {x: 1, y: 0.71, z: 0.29}
+    Emissive: {x: 0, y: 0, z: 0}
+    Transmission: {x: 0, y: 0, z: 0}
+    IOR: 1.459
+    Metalness: 1
+    Roughness: 0.02389999
 --- !u!23 &186671043
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -475,7 +481,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 743576e2a6ae27647bb6bff91451a004, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Materials: []
+  Materials:
+  - Albedo: {x: 0.9063317, y: 0.9063317, z: 0.9063317}
+    Emissive: {x: 0, y: 0, z: 0}
+    Transmission: {x: 0, y: 0, z: 0}
+    IOR: 1.459
+    Metalness: 0.303
+    Roughness: 0.8979
 --- !u!64 &404287995
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -585,7 +597,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 743576e2a6ae27647bb6bff91451a004, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Materials: []
+  Materials:
+  - Albedo: {x: 0.6206465, y: 0, z: 0.85882354}
+    Emissive: {x: 0, y: 0, z: 0}
+    Transmission: {x: 0, y: 0, z: 0}
+    IOR: 1.459
+    Metalness: 0
+    Roughness: 0.8579
 --- !u!135 &622321977
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -693,8 +711,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Type: 0
-  Color: {r: 0, g: 0, b: 0, a: 0}
-  Intensity: 1
+  Color: {r: 1, g: 1, b: 1, a: 1}
+  Intensity: 5
   SpotAngle: 90
   AreaSize: {x: 1, y: 1}
 --- !u!108 &1002139584
@@ -804,7 +822,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 743576e2a6ae27647bb6bff91451a004, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Materials: []
+  Materials:
+  - Albedo: {x: 0.95, y: 0.64, z: 0.54}
+    Emissive: {x: 0, y: 0, z: 0}
+    Transmission: {x: 0, y: 0, z: 0}
+    IOR: 1.459
+    Metalness: 1
+    Roughness: 0.0048999954
 --- !u!23 &1072121284
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -1003,7 +1027,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 743576e2a6ae27647bb6bff91451a004, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Materials: []
+  Materials:
+  - Albedo: {x: 1, y: 1, z: 1}
+    Emissive: {x: 0, y: 0, z: 0}
+    Transmission: {x: 0, y: 0, z: 0}
+    IOR: 1.459
+    Metalness: 0
+    Roughness: 0.4999
 --- !u!65 &1103249760
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1116,9 +1146,9 @@ MonoBehaviour:
   - Albedo: {x: 0, y: 0, z: 0}
     Emissive: {x: 0, y: 0, z: 0}
     Transmission: {x: 1, y: 1, z: 1}
-    IOR: 1.4
+    IOR: 1.459
     Metalness: 0
-    Roughness: 0
+    Roughness: 0.4999
 --- !u!135 &2037577301
 SphereCollider:
   m_ObjectHideFlags: 0

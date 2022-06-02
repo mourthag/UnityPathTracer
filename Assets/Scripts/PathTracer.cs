@@ -181,7 +181,6 @@ public class PathTracer : MonoBehaviour
         if (!_meshObjectsNeedRebuilding)
             return;
         //TODO export reset method
-        _meshObjectsNeedRebuilding = false;
         _currentSample = 0;
         _wasImageSaved = false;
         _startTime = DateTime.Now;
@@ -260,6 +259,7 @@ public class PathTracer : MonoBehaviour
         TimeSpan renderTime = DateTime.Now - _startTime;
         Debug.Log("Scene/BVH construction took " + renderTime.TotalSeconds + " seconds!");
 
+        _meshObjectsNeedRebuilding = false;
         _startTime = DateTime.Now;
 
     }
