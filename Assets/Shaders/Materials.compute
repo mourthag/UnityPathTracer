@@ -80,6 +80,7 @@ interface iMaterial
 struct MaterialBufferObject
 {
     float3 albedo;
+    int albedoTexId;
     float3 emissive;
     float3 transmission;
     float ior;
@@ -89,6 +90,9 @@ struct MaterialBufferObject
 
 
 StructuredBuffer<MaterialBufferObject> _Materials;
+
+Texture2DArray<float4> _MaterialTextures;
+SamplerState sampler_MaterialTextures;
 
 #include "Lights.compute"
 
@@ -124,6 +128,15 @@ class BufferMaterial
 
         rb.Push(reflectionRay);
     }*/
+
+    void LoadTextures(inout MaterialBufferObject mat, const float2 uv)
+    {
+        if(mat.albedoTexId >= 0)
+        {
+            mat.albedo = _MaterialTextures.SampleLevel(sampler_MaterialTextures, float3(uv, mat.albedoTexId),
+            0).xyz;
+        }
+    }
 
     void EvaluateCookTorrance(const MaterialBufferObject mat, const Ray inRay, const RayHit hit, inout RayBuffer rb, inout float3 attenuation)
     {
@@ -211,12 +224,13 @@ class BufferMaterial
     bool Scatter(int matID, Ray inRay, RayHit hit, inout float3 attenuation, inout RayBuffer rb)
     {
         MaterialBufferObject mat = _Materials[matID];
-        
+
         attenuation = 0;
         
         if (!hit.isFrontFace)
             hit.normal = -hit.normal;
-        //TODO uniform sampling and brdf evaluation
+            
+        LoadTextures(mat, hit.uv);
 
         if ( any(mat.albedo))
         {

@@ -6,7 +6,9 @@ using UnityEngine;
 [Serializable]
 public struct MaterialObject
 {
-    public Vector3 Albedo, Emissive, Transmission;
+    public Vector3 Albedo;
+    public int AlbedoTexId;
+    public Vector3 Emissive, Transmission;
     public float IOR, Metalness, Roughness;
 }
 
@@ -15,11 +17,36 @@ public struct MaterialObject
 [ExecuteInEditMode]
 public class PathTracingObject : MonoBehaviour
 {
-
-
+    public static List<Texture> MaterialTextures = new List<Texture>();
+    //public static Texture2DArray MaterialTextures;
     public List<MaterialObject> Materials = new List<MaterialObject>();
     private List<MaterialObject> _oldMaterials = new List<MaterialObject>();
 
+    public static Texture2DArray CreateTexArray()
+    {
+        if(MaterialTextures.Count == 0)
+        {
+            Texture2DArray newArray = new Texture2DArray(2048, 
+                                            2048, 
+                                            1, 
+                                            TextureFormat.DXT1, 
+                                            false);
+            return newArray;
+        } else {
+
+            Texture2DArray newArray = new Texture2DArray(2048, 
+                                                        2048, 
+                                                        MaterialTextures.Count, 
+                                                        TextureFormat.DXT1, 
+                                                        false);
+            for(int i = 0; i < MaterialTextures.Count; i++)
+            {
+                Graphics.CopyTexture(MaterialTextures[i], 0, 0, newArray, i, 0);
+            }
+            newArray.Apply();
+            return newArray;
+        }
+    }
 
     public void LoadUnityMaterials() 
     {
@@ -30,6 +57,14 @@ public class PathTracingObject : MonoBehaviour
             MaterialObject mat = new MaterialObject();
 
             mat.IOR = 1.459f;
+
+            if(material.GetTexture("_MainTex"))
+            {
+                mat.AlbedoTexId = MaterialTextures.Count;
+                MaterialTextures.Add(material.GetTexture("_MainTex"));
+            }
+            else
+                mat.AlbedoTexId = -1;
 
             mat.Albedo.x = material.GetColor("_Color").r;
             mat.Albedo.y = material.GetColor("_Color").g;
@@ -81,5 +116,14 @@ public class PathTracingObject : MonoBehaviour
     void OnDisable()
     {
         PathTracer.UnregisterObject(this);
+        
+        var renderer = GetComponent<MeshRenderer>();
+        foreach(var material in renderer.sharedMaterials)
+        {
+            if(material.GetTexture("_MainTex"))
+            {
+                MaterialTextures.Remove(material.GetTexture("_MainTex"));
+            }
+        }
     }
 }

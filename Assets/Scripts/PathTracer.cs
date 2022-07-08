@@ -194,6 +194,8 @@ public class PathTracer : MonoBehaviour
         _meshObjects.Clear();
         _vertices.Clear();
         _indices.Clear();
+        PathTracingObject.MaterialTextures.Clear();
+
 
         foreach (var ptObject in _ptObjects)
         {
@@ -230,6 +232,7 @@ public class PathTracer : MonoBehaviour
 
                 //Add material and get its index
                 int matIndex = _materialBufferObjects.Count();
+                ptObject.LoadUnityMaterials();
                 _materialBufferObjects.Add(ptObject.Materials[i]);
 
                 Matrix4x4 normalMat = meshRenderer.worldToLocalMatrix.transpose;
@@ -247,11 +250,14 @@ public class PathTracer : MonoBehaviour
             }
 
         }
+        
+        var MaterialTextures = PathTracingObject.CreateTexArray();
+        PathTracingShader.SetTexture(0, "_MaterialTextures", MaterialTextures);
 
         CreateComputeBuffer<MeshObject>(ref _meshObjectsBuffer, _meshObjects, 140);
         CreateComputeBuffer<Vertex>(ref _verticesBuffer, _vertices, 32);
         CreateComputeBuffer<int>(ref _indicesBuffer, _indices, 4);
-        CreateComputeBuffer<MaterialObject>(ref _materialBuffer, _materialBufferObjects, 48);
+        CreateComputeBuffer<MaterialObject>(ref _materialBuffer, _materialBufferObjects, 52);
         if (UseBVH)
         {
             CreateBVH();
