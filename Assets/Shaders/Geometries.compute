@@ -215,7 +215,7 @@ class BVH : iGeometry
                         {
                             if (t_int > 0 && t_int < t )
                             {
-                                //return if ray is shadow ray and material is transparent
+                                //skip if ray is shadow ray and material is transparent
                                 if(ray.type == RAYTYPE_SHADOW && any(_Materials[mesh.materialIndex].transmission))
                                     continue;
 

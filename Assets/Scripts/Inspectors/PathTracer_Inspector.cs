@@ -35,6 +35,7 @@ public class PathTracer_Inspector : Editor
         }
         else if(selectedTab == 2)
         {
+            DoubleText("Mesh Count: ", PathTracer.GetMeshCount().ToString());
             DoubleText("Vertex Count: ", PathTracer.GetVertCount().ToString());
             DoubleText("Triangle Count: ", PathTracer.GetTriCount().ToString());
             DoubleText("BVH Node Count: ", PathTracer.GetBVHNodeCount().ToString());

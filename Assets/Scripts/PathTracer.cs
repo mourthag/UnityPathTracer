@@ -126,6 +126,10 @@ public class PathTracer : MonoBehaviour
         return 0;
     }
 
+    public static int GetMeshCount(){
+        return _meshObjects.Count;
+    }
+
     public static int GetVertCount(){
         return _vertices.Count;
     }
