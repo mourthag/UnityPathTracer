@@ -129,6 +129,7 @@ Ray CreateRay(float3 origin, float3 direction, int type) {
 struct RayHit {
 	float3 position;
 	float3 normal;
+	float3 tangent;
 	float2 uv;
 	int matID;
 	bool isFrontFace;
@@ -139,6 +140,7 @@ RayHit CreateRayHit() {
 	RayHit hit;
 	hit.position = float3(0.0f, 0.0f, 0.0f);
 	hit.normal = float3(0.0f, 0.0f, 0.0f);
+	hit.tangent = float3(0.0f, 0.0f, 0.0f);
 	hit.uv = float2(0.0f, 0.0f);
 	hit.matID = MAX_MATERIALS;
 	hit.isFrontFace = true;

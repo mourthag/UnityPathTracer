@@ -145,8 +145,12 @@ class BufferMaterial
         }
         if(mat.normalTexId >= 0)
         {
-            //hit.normal = _MaterialNormalTextures.SampleLevel(sampler_MaterialNormalTextures, float3(hit.uv, mat.normalTexId),
-            //0).xyz;
+           /*
+           const float3 bitangent = cross(hit.normal, hit.tangent);
+            const float3x3 tbnMat = float3x3(hit.tangent, bitangent, hit.normal);
+            const float3 bumpmapNormal = normalize(_MaterialNormalTextures.SampleLevel(sampler_MaterialNormalTextures, float3(hit.uv, mat.normalTexId),
+                0).xyz * 2.0 - 1.0);
+            hit.normal += mul(tbnMat, bumpmapNormal);*/
         }
         if(mat.MRTexId >= 0)
         {

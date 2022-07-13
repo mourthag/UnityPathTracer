@@ -23,6 +23,7 @@ public class PathTracer : MonoBehaviour
     {
         public Vector3 Position;
         public Vector3 Normal;
+        public Vector3 Tangent;
         public Vector2 UV;
     }
 
@@ -207,10 +208,18 @@ public class PathTracer : MonoBehaviour
                     Position = position,
                     Normal = normal.normalized,
                 });
-            if(mesh.uv.Length > 0)
+            if (mesh.tangents.Length > 0)
+                query = mesh.tangents.Zip(query, (tangent, vert) => new Vertex
+                {
+                    Position = vert.Position,
+                    Normal = vert.Normal,
+                    Tangent = tangent
+                });
+            if (mesh.uv.Length > 0)
                 query = mesh.uv.Zip(query, (uv, vert) => new Vertex{
                     Position = vert.Position,
                     Normal = vert.Normal,
+                    Tangent = vert.Tangent,
                     UV = uv
                 });
 
@@ -259,7 +268,7 @@ public class PathTracer : MonoBehaviour
         PathTracingShader.SetTexture(0, "_MaterialEmissionTextures", MaterialEmissionTextures);
 
         CreateComputeBuffer<MeshObject>(ref _meshObjectsBuffer, _meshObjects, 140);
-        CreateComputeBuffer<Vertex>(ref _verticesBuffer, _vertices, 32);
+        CreateComputeBuffer<Vertex>(ref _verticesBuffer, _vertices, 44);
         CreateComputeBuffer<int>(ref _indicesBuffer, _indices, 4);
         CreateComputeBuffer<PtMaterialBufferObject>(ref _materialBuffer, _materialBufferObjects, 64);
         if (UseBVH)

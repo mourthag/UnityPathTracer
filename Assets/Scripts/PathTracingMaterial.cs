@@ -36,7 +36,6 @@ public class PathTracingMaterial
     private static List<Texture2DArray> _CreateTexArrays(List<Texture2D> TexList)
     {
         var texArrays = new List<Texture2DArray>();
-        Debug.Log(TexList.Count);
         if(TexList.Count == 0)
         {
             //return empty texture
