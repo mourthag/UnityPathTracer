@@ -90,7 +90,7 @@ float3 Shade(inout Ray ray, RayHit hit, float t, inout RayBuffer rb)
 
 			default:      
 				BufferMaterial mat;
-				mat.Scatter(hit.matID, ray, hit, attenuation, rb);
+				mat.Scatter(ray, hit, attenuation, rb);
 				break;
 		}
 

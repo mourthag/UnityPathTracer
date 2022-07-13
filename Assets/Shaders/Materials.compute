@@ -73,26 +73,28 @@ float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
 
 interface iMaterial
 {
-    bool Scatter(Ray inRay, RayHit hit, inout float3 attenuation, inout RayBuffer rb);
+    bool Scatter(Ray inRay, inout RayHit hit, inout float3 attenuation, inout RayBuffer rb);
 };
 
 
 struct MaterialBufferObject
 {
-    float3 albedo;
-    int albedoTexId;
-    float3 emissive;
-    float3 transmission;
-    float ior;
-    float metalness;
-    float roughness;
+    float3 albedo, emission, transmission;
+    float ior, metalness, roughness;
+    int albedoTexId, emissionTexId, normalTexId, MRTexId;
 };
 
 
 StructuredBuffer<MaterialBufferObject> _Materials;
 
-Texture2DArray<float4> _MaterialTextures;
-SamplerState sampler_MaterialTextures;
+Texture2DArray<float4> _MaterialAlbedoTextures;
+SamplerState sampler_MaterialAlbedoTextures;
+Texture2DArray<float4> _MaterialNormalTextures;
+SamplerState sampler_MaterialNormalTextures;
+Texture2DArray<float4> _MaterialMRTextures;
+SamplerState sampler_MaterialMRTextures;
+Texture2DArray<float4> _MaterialEmissionTextures;
+SamplerState sampler_MaterialEmissionTextures;
 
 #include "Lights.compute"
 
@@ -129,12 +131,29 @@ class BufferMaterial
         rb.Push(reflectionRay);
     }*/
 
-    void LoadTextures(inout MaterialBufferObject mat, const float2 uv)
+    void LoadTextures(inout MaterialBufferObject mat, inout RayHit hit)
     {
         if(mat.albedoTexId >= 0)
         {
-            mat.albedo = _MaterialTextures.SampleLevel(sampler_MaterialTextures, float3(uv, mat.albedoTexId),
+            mat.albedo = _MaterialAlbedoTextures.SampleLevel(sampler_MaterialAlbedoTextures, float3(hit.uv, mat.albedoTexId),
             0).xyz;
+        }
+        if(mat.emissionTexId >= 0)
+        {
+            mat.emission = _MaterialEmissionTextures.SampleLevel(sampler_MaterialEmissionTextures, float3(hit.uv, mat.emissionTexId),
+            0).xyz;
+        }
+        if(mat.normalTexId >= 0)
+        {
+            //hit.normal = _MaterialNormalTextures.SampleLevel(sampler_MaterialNormalTextures, float3(hit.uv, mat.normalTexId),
+            //0).xyz;
+        }
+        if(mat.MRTexId >= 0)
+        {
+            float2 MR = _MaterialMRTextures.SampleLevel(sampler_MaterialMRTextures, float3(hit.uv, mat.MRTexId),
+            0).ra;
+            mat.metalness = MR.x;
+            mat.roughness = MR.y;
         }
     }
 
@@ -221,16 +240,16 @@ class BufferMaterial
 #endif
     }
 
-    bool Scatter(int matID, Ray inRay, RayHit hit, inout float3 attenuation, inout RayBuffer rb)
+    bool Scatter(Ray inRay, inout RayHit hit, inout float3 attenuation, inout RayBuffer rb)
     {
-        MaterialBufferObject mat = _Materials[matID];
+        MaterialBufferObject mat = _Materials[hit.matID];
+        LoadTextures(mat, hit);
 
         attenuation = 0;
         
         if (!hit.isFrontFace)
             hit.normal = -hit.normal;
             
-        LoadTextures(mat, hit.uv);
 
         if ( any(mat.albedo))
         {
@@ -264,9 +283,9 @@ class BufferMaterial
             transmissionRay.energy = inRay.energy * mat.transmission;
             rb.Push(transmissionRay);
         }
-        if (any(mat.emissive))
+        if (any(mat.emission))
         {
-            attenuation = mat.emissive;
+            attenuation = mat.emission;
         }
         
         return true;

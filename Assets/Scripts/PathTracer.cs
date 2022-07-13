@@ -46,7 +46,7 @@ public class PathTracer : MonoBehaviour
     private static List<MeshObject> _meshObjects = new List<MeshObject>();
     private static List<Vertex> _vertices = new List<Vertex>();
     private static List<int> _indices = new List<int>();
-    private static List<MaterialObject> _materialBufferObjects = new List<MaterialObject>();
+    private static List<PtMaterialBufferObject> _materialBufferObjects = new List<PtMaterialBufferObject>();
     private static List<BVHBufferNode> _bvhBufferNodes = new List<BVHBufferNode>();
 
     private static List<LightBufferObject> _lightBufferObjects = new List<LightBufferObject>();
@@ -194,8 +194,6 @@ public class PathTracer : MonoBehaviour
         _meshObjects.Clear();
         _vertices.Clear();
         _indices.Clear();
-        PathTracingObject.MaterialTextures.Clear();
-
 
         foreach (var ptObject in _ptObjects)
         {
@@ -232,8 +230,8 @@ public class PathTracer : MonoBehaviour
 
                 //Add material and get its index
                 int matIndex = _materialBufferObjects.Count();
-                ptObject.LoadUnityMaterials();
-                _materialBufferObjects.Add(ptObject.Materials[i]);
+                ptObject.Materials[i].RegisterTextures();
+                _materialBufferObjects.Add(ptObject.Materials[i].ToPtMaterialBufferObject());
 
                 Matrix4x4 normalMat = meshRenderer.worldToLocalMatrix.transpose;
 
@@ -251,13 +249,19 @@ public class PathTracer : MonoBehaviour
 
         }
         
-        var MaterialTextures = PathTracingObject.CreateTexArray();
-        PathTracingShader.SetTexture(0, "_MaterialTextures", MaterialTextures);
+        var MaterialAlbedoTextures = PathTracingMaterial.CreateAlbedoTextureArrays()[0];
+        PathTracingShader.SetTexture(0, "_MaterialAlbedoTextures", MaterialAlbedoTextures);
+        var MaterialNormalTextures = PathTracingMaterial.CreateNormalTextureArrays()[0];
+        PathTracingShader.SetTexture(0, "_MaterialNormalTextures", MaterialNormalTextures);
+        var MaterialMRTextures = PathTracingMaterial.CreateMRTextureArrays()[0];
+        PathTracingShader.SetTexture(0, "_MaterialMRTextures", MaterialMRTextures);
+        var MaterialEmissionTextures = PathTracingMaterial.CreateEmissionTextureArrays()[0];
+        PathTracingShader.SetTexture(0, "_MaterialEmissionTextures", MaterialEmissionTextures);
 
         CreateComputeBuffer<MeshObject>(ref _meshObjectsBuffer, _meshObjects, 140);
         CreateComputeBuffer<Vertex>(ref _verticesBuffer, _vertices, 32);
         CreateComputeBuffer<int>(ref _indicesBuffer, _indices, 4);
-        CreateComputeBuffer<MaterialObject>(ref _materialBuffer, _materialBufferObjects, 52);
+        CreateComputeBuffer<PtMaterialBufferObject>(ref _materialBuffer, _materialBufferObjects, 64);
         if (UseBVH)
         {
             CreateBVH();
