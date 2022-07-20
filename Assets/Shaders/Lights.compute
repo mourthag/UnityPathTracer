@@ -118,7 +118,7 @@ class DirectionalLight : Light {
     }
 
     float3 Sample(float3 pos){
-        return normalize(Direction);
+        return normalize(-Direction);
     }
     
     bool IsVisible(Ray shadowRay, RayHit shadowRayIntersection, float t)
