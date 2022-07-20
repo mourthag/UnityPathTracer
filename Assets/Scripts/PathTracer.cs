@@ -12,37 +12,37 @@ public enum OutputType {
     WorldPosition = 3
 }
 
+public struct Vertex
+{
+    public Vector3 Position;
+    public Vector3 Normal;
+    public Vector3 Tangent;
+    public Vector2 UV;
+}
+
+public struct MeshObject
+{
+    public Matrix4x4 ModelMatrix;
+    public Matrix4x4 NormalMatrix;
+    public int IndexOffset;
+    public int TriangleCount;
+    public int MaterialIndex;
+}
+
+public struct BVHBufferNode
+{
+    public Vector3 BoundsMaximum;
+    public Vector3 BoundsMinimum;
+    public int FirstPrimOffset, PrimCount, MeshIndex;
+    public int C0Index, C1Index;
+}
+
 [ExecuteInEditMode]
 public class PathTracer : MonoBehaviour
 {
     private static bool _meshObjectsNeedRebuilding = false;
     private static bool _lightsNeedRebuilding = false;
     private static List<PathTracingObject> _ptObjects = new List<PathTracingObject>();
-
-    public struct Vertex
-    {
-        public Vector3 Position;
-        public Vector3 Normal;
-        public Vector3 Tangent;
-        public Vector2 UV;
-    }
-
-    public struct MeshObject
-    {
-        public Matrix4x4 ModelMatrix;
-        public Matrix4x4 NormalMatrix;
-        public int IndexOffset;
-        public int TriangleCount;
-        public int MaterialIndex;
-    }
-
-    public struct BVHBufferNode
-    {
-        public Vector3 BoundsMaximum;
-        public Vector3 BoundsMinimum;
-        public int FirstPrimOffset, PrimCount, MeshIndex;
-        public int C0Index, C1Index;
-    }
 
     private static List<MeshObject> _meshObjects = new List<MeshObject>();
     private static List<Vertex> _vertices = new List<Vertex>();
@@ -69,6 +69,8 @@ public class PathTracer : MonoBehaviour
     public bool UseBVH;
     public bool BackfaceCulling;
 
+    [SerializeField]
+    public BVHBuilderOptions BVHOptions;
     private BVHBuilder _bvhBuilder;
 
     private RenderTexture _target;
@@ -292,7 +294,7 @@ public class PathTracer : MonoBehaviour
         _isCreatingBVH = true;
         _bvhBufferNodes.Clear();
         Debug.Log("Total triangles: " + _indices.Count / 3);
-        _bvhBuilder = new BVHBuilder(_meshObjects, _vertices, _indices);
+        _bvhBuilder = new BVHBuilder(_meshObjects, _vertices, _indices, BVHOptions);
         _bvhBuilder.Build();
 
         var bvhNodes = _bvhBuilder.GetBvhNodes();

@@ -2,6 +2,19 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+public enum BVHSplitStrategy {
+    EqualCount,
+    SAH
+}
+
+[System.Serializable]
+public struct BVHBuilderOptions {
+    public BVHSplitStrategy strategy;
+    public int SAHBuckets;
+    public int SAHBundleCost;
+    public int SAHPrimCost;
+}
+
 public struct Bounds
 {
     public Vector3 Minimum;
@@ -22,6 +35,22 @@ public struct Bounds
         return ab;
     }
 
+    public void Init(Vector3 a)
+    {       
+        Maximum = Vector3.Max(Maximum, a);
+        Minimum = Vector3.Min(Minimum, a);
+    }
+
+    public Vector3 Offset(Vector3 point)
+    {
+        Vector3 o = point - Minimum;
+            
+        if (Maximum.x > Minimum.x) o.x /= Maximum.x - Minimum.x;
+        if (Maximum.y > Minimum.y) o.y /= Maximum.y - Minimum.y;
+        if (Maximum.z > Minimum.z) o.z /= Maximum.z - Minimum.z;
+        return o;
+    }
+
     public int MaximumExtent()
     {
         Vector3 diag = Maximum - Minimum;
@@ -31,6 +60,20 @@ public struct Bounds
             return 1;
         return 2;
     }
+    public float SurfaceArea()
+    {
+        Vector3 distance = Maximum - Minimum;
+        float areaTop = distance.z * distance.x;
+        float areaRight = distance.y * distance.z;
+        float areaFront = distance.x * distance.y;
+        return 2 * (areaTop + areaRight + areaFront);
+
+    }
+}
+
+public struct SAHBucketInfo {
+    public int count;
+    public Bounds bounds;
 }
 
 public struct PrimitiveInfo
@@ -72,11 +115,13 @@ public class BVHNode
 
 public class BVHBuilder
 {
-    private static List<PathTracer.MeshObject> _meshObjects = new List<PathTracer.MeshObject>();
-    private static List<PathTracer.Vertex> _vertices = new List<PathTracer.Vertex>();
-    private static List<int> _indices = new List<int>();
+    private List<MeshObject> _meshObjects = new List<MeshObject>();
+    private List<Vertex> _vertices = new List<Vertex>();
+    private List<int> _indices = new List<int>();
 
     private List<PrimitiveInfo> _primitiveInfos = new List<PrimitiveInfo>();
+
+    private BVHBuilderOptions _options;
 
     private BVHNode _rootNode;
     private int _rootIndex;
@@ -85,8 +130,9 @@ public class BVHBuilder
 
     private int _nPrims;
 
-    public BVHBuilder(List<PathTracer.MeshObject> meshObjects, List<PathTracer.Vertex> vertices, List<int> indices)
+    public BVHBuilder(List<MeshObject> meshObjects, List<Vertex> vertices, List<int> indices, BVHBuilderOptions options)
     {
+        _options = options;
         _meshObjects = meshObjects;
         _vertices = vertices;
         _indices = indices;
@@ -124,7 +170,7 @@ public class BVHBuilder
     {
         for (int meshID = 0; meshID < _meshObjects.Count; meshID++)
         {
-            PathTracer.MeshObject mesh = _meshObjects[meshID];
+            MeshObject mesh = _meshObjects[meshID];
             for (int i = 0; i < mesh.TriangleCount; i++)
             {
                 Vector3 v1 = mesh.ModelMatrix *
@@ -157,6 +203,29 @@ public class BVHBuilder
         var currentNumNodes = _nodes.Count;
         _nodes.Add(node);
         return currentNumNodes;
+    }
+
+    private int PartitionPrimInfoByBucket(int start, int end, Bounds centroidBounds, int minCostSplitBucket, int dim)
+    {
+        List<PrimitiveInfo> left = new List<PrimitiveInfo>();
+        List<PrimitiveInfo> right = new List<PrimitiveInfo>();
+
+        for(int i = start; i < end; i++)
+        {
+            int b = (int)(_options.SAHBuckets * GetVectorComponent(centroidBounds.Offset(_primitiveInfos[i].Center),dim));
+            if (b == _options.SAHBuckets) b = _options.SAHBuckets - 1;
+            if( b <= minCostSplitBucket)
+                left.Add(_primitiveInfos[i]);
+            else
+                right.Add(_primitiveInfos[i]);
+        }
+
+        int count = end - start;
+        int leftCount = left.Count;
+        left.AddRange(right);
+        _primitiveInfos.RemoveRange(start, count);
+        _primitiveInfos.InsertRange(start, left);
+        return leftCount + start;
     }
 
     private BVHNode RecursiveBuild(int start, int end, List<int> orderedIndices)
@@ -212,6 +281,99 @@ public class BVHBuilder
             }
             else
             {
+                switch(_options.strategy)
+                {
+                    case BVHSplitStrategy.EqualCount:
+                        mid = (start + end) / 2;
+                        break;
+                    case BVHSplitStrategy.SAH:
+                        if (nPrimitives <= 4)
+                            mid = (start + end) / 2;
+                        else {
+
+                            SAHBucketInfo[] buckets = new SAHBucketInfo[_options.SAHBuckets];
+
+                            bool isSameMesh = true;
+
+                            //group primitives into buckets
+                            for(int i = start; i < end; i++)
+                            {
+                                isSameMesh = isSameMesh & _primitiveInfos[i].MeshIndex == _primitiveInfos[start].MeshIndex;
+
+                                int b = (int)(_options.SAHBuckets * GetVectorComponent(centroidBounds.Offset(_primitiveInfos[i].Center), dim));
+                                if (b == _options.SAHBuckets) b = _options.SAHBuckets -1;
+                                
+                                if(buckets[b].count == 0)
+                                    buckets[b].bounds = _primitiveInfos[i].Bounds;
+                                else
+                                    buckets[b].bounds = Bounds.Union(buckets[b].bounds, _primitiveInfos[i].Center);
+                                
+                                buckets[b].count++;
+                            }
+
+                            //Evaluate cost for each split
+                            float[] cost = new float[_options.SAHBuckets-1];
+                            for(int i = 0; i < _options.SAHBuckets -1; i++)
+                            {
+                                Bounds b0 = new Bounds(),b1 = new Bounds();
+                                int cost0 = 0, cost1 = 0;
+                                //left side
+                                for(int j = 0; j<=i; j++)
+                                {
+                                    b0 = Bounds.Union(b0, buckets[j].bounds);
+                                    cost0 += buckets[j].count;
+                                }
+                                //right side
+                                for(int j = i+1; j<_options.SAHBuckets; j++)
+                                {
+                                    b1 = Bounds.Union(b1, buckets[j].bounds);
+                                    cost1 += buckets[j].count;
+                                }
+                                cost[i] = 0.125f + (cost0 * b0.SurfaceArea() + cost1 * b1.SurfaceArea()) / bounds.SurfaceArea(); 
+                            }
+
+                            //determine bucket with min cost
+                            float minCost = cost[0];
+                            int minCostSplitBucket = 0;
+                            for (int i = 1; i < _options.SAHBuckets - 1; ++i) {
+                                if (cost[i] < minCost) {
+                                    minCost = cost[i];
+                                    minCostSplitBucket = i;
+                                }
+                            }
+                    
+                            float leafCost = _options.SAHPrimCost * nPrimitives;
+                            if(minCost < leafCost)
+                            {
+                                //split
+                                mid = PartitionPrimInfoByBucket(start, end, centroidBounds, minCostSplitBucket, dim);
+                            }
+                            else {
+                                if(isSameMesh) {
+                                    int firstPrimsOffset = orderedIndices.Count;
+
+                                    for (int i = start; i < end; ++i)
+                                    {
+                                        int primNum = _primitiveInfos[i].PrimIndex;
+                                        
+                                        orderedIndices.Add(_indices[primNum]);
+                                        orderedIndices.Add(_indices[primNum + 1]);
+                                        orderedIndices.Add(_indices[primNum + 2]);
+                                    }
+                                    //TODO: this might interfere with the mesh index
+                                    node.InitLeafNode(firstPrimsOffset, nPrimitives, bounds, _primitiveInfos[start].MeshIndex);
+                                    return node;
+                                }
+                                else
+                                    mid = (start + end) / 2;
+                            }
+                        }
+
+                        
+                        break;
+
+                }
+
                 var c0 = RecursiveBuild(start, mid, orderedIndices);
                 var c1 = RecursiveBuild(mid, end, orderedIndices);
                 node.InitInnerNode(dim, c0, c1);
