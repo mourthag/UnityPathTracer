@@ -111,15 +111,19 @@ class Meshes : iGeometry
                         const float3 n1 = mul(mesh.normalMatrix, float4(vert1.normal, 1)).xyz;
                         const float3 n2 = mul(mesh.normalMatrix, float4(vert2.normal, 1)).xyz;
                         const float3 n3 = mul(mesh.normalMatrix, float4(vert3.normal, 1)).xyz;
-                        hit.normal = normalize(barycentric.x * n1 + barycentric.y * n2 + barycentric.z * n3);
+                        const float3 normal = normalize(barycentric.x * n1 + barycentric.y * n2 + barycentric.z * n3);
+                        hit.normal = normal;
 
                         const float3 t1 = mul(mesh.normalMatrix, float4(vert1.tangent, 0)).xyz;
                         const float3 t2 = mul(mesh.normalMatrix, float4(vert2.tangent, 0)).xyz;
                         const float3 t3 = mul(mesh.normalMatrix, float4(vert3.tangent, 0)).xyz;
-                        hit.tangent = normalize(barycentric.x * t1 + barycentric.y * t2 + barycentric.z * t3);
+                        const float3 tangent = normalize(barycentric.x * t1 + barycentric.y * t2 + barycentric.z * t3);
+
+                        const float3 bitangent = normalize(cross(normal, tangent));
+                        hit.TBN = float3x3(tangent, bitangent, normal);
 
                         hit.uv = barycentric.x * vert1.uv + barycentric.y * vert2.uv + barycentric.z * vert3.uv;
-                        hit.isFrontFace = dot(hit.normal, -ray.direction) > 0;
+                        hit.isFrontFace = dot(normal, -ray.direction) > 0;
                     }
                 }
             }
@@ -229,18 +233,22 @@ class BVH : iGeometry
                                 hit.position = ray.origin + t * ray.direction;
                                 hit.matID = mesh.materialIndex;
 
-                                const float3 n1 = mul(mesh.normalMatrix, float4(vert1.normal, 0)).xyz;
-                                const float3 n2 = mul(mesh.normalMatrix, float4(vert2.normal, 0)).xyz;
-                                const float3 n3 = mul(mesh.normalMatrix, float4(vert3.normal, 0)).xyz;
-                                hit.normal = normalize(barycentric.x * n1 + barycentric.y * n2 + barycentric.z * n3);
+                                const float3 n1 = mul(mesh.normalMatrix, float4(vert1.normal, 1)).xyz;
+                                const float3 n2 = mul(mesh.normalMatrix, float4(vert2.normal, 1)).xyz;
+                                const float3 n3 = mul(mesh.normalMatrix, float4(vert3.normal, 1)).xyz;
+                                const float3 normal = normalize(barycentric.x * n1 + barycentric.y * n2 + barycentric.z * n3);
+                                hit.normal = normal;
 
                                 const float3 t1 = mul(mesh.normalMatrix, float4(vert1.tangent, 0)).xyz;
                                 const float3 t2 = mul(mesh.normalMatrix, float4(vert2.tangent, 0)).xyz;
                                 const float3 t3 = mul(mesh.normalMatrix, float4(vert3.tangent, 0)).xyz;
-                                hit.tangent = normalize(barycentric.x * t1 + barycentric.y * t2 + barycentric.z * t3);
+                                const float3 tangent = normalize(barycentric.x * t1 + barycentric.y * t2 + barycentric.z * t3);
+
+                                const float3 bitangent = normalize(cross(normal, tangent));
+                                hit.TBN = float3x3(tangent, bitangent, normal);
 
                                 hit.uv = barycentric.x * vert1.uv + barycentric.y * vert2.uv + barycentric.z * vert3.uv;
-                                hit.isFrontFace = dot(hit.normal, -ray.direction) > 0;
+                                hit.isFrontFace = dot(normal, -ray.direction) > 0;
                             }
                         }
                     }

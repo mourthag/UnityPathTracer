@@ -49,7 +49,14 @@ public class PathTracingObject : MonoBehaviour
         }*/
     }
 
-    // Update is called once per frame
+    void OnApplicationQuit()
+    {
+        foreach(var material in Materials)
+        {
+            material.UnregisterTextures();
+        }
+    }
+
     void OnDisable()
     {
         PathTracer.UnregisterObject(this);
