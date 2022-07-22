@@ -406,8 +406,8 @@ float3 SampleLight(int id, float3 pos)
 float3 GetContribution(int id, Ray ray)
 {
 
-    float distance;
-    RayHit hit;
+    float distance = 1.#INF;
+    RayHit hit = CreateRayHit();
     CastShadowRay(ray, hit, distance);
 
     const LightBufferObject light = _Lights[id];

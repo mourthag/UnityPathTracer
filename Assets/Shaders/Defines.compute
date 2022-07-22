@@ -5,6 +5,7 @@ float2 _Pixel;
 float _Seed;
 
 static const float PI = 3.14159265f;
+static const float PI_INV = 1.0 / PI;
 static const float EPSILON = 1e-6;
 
 const static int MAX_DEPTH = 24;
@@ -43,6 +44,10 @@ float energy(float3 color)
 	return dot(color, 1.0f / 3.0f);
 }
 
+float3 HalfVector(const float3 l, const float3 v) {
+	return normalize(l + v);
+}
+
 float3x3 GetTangentSpace(float3 normal)
 {
 	// Choose a helper vector for the cross product
@@ -79,6 +84,71 @@ float3 SampleCT(const float3 reflected, const float roughness) {
 	const float3 tangentSpaceDir = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
     // Transform direction to world space
     return mul(tangentSpaceDir, GetTangentSpace(reflected));
+}
+
+//=======================================
+//=-------------------------------------=
+//=----------TangentSpace Math----------=
+//=-------------------------------------=
+//=======================================
+
+float CosTheta(const float3 w)
+{
+	return w.y;
+}
+
+float Cos2Theta(const float3 w)
+{
+	return w.y * w.y;
+}
+
+float AbsCosTheta(const float3 w)
+{
+	return abs(CosTheta(w));
+}
+
+float Sin2Theta(const float3 w)
+{
+	return max(0.0f, 1.0f - Cos2Theta(w));
+}
+
+float SinTheta(const float3 w)
+{
+	return sqrt(Sin2Theta(w));
+}
+
+float TanTheta(const float3 w)
+{
+	return SinTheta(w) / CosTheta(w);
+}
+
+float Tan2Theta(const float3 w)
+{
+	return Sin2Theta(w) / Cos2Theta(w);
+}
+
+float CosPhi(const float3 w)
+{
+	float sinTheta = SinTheta(w);
+	return (sinTheta == 0) ? 1.0f : clamp(w.x / sinTheta, -1.0f, 1.0f);
+}
+
+float SinPhi(const float3 w)
+{
+	float sinTheta = SinTheta(w);
+	return (sinTheta == 0) ? 1.0f : clamp(w.z / sinTheta, -1.0f, 1.0f);
+}
+
+float Cos2Phi(const float3 w)
+{
+	float cosPhi = CosPhi(w);
+	return cosPhi * cosPhi;
+}
+
+float Sin2Phi(const float3 w)
+{
+	float sinPhi = SinPhi(w);
+	return sinPhi * sinPhi;
 }
 
 //=======================================

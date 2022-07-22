@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.37311953, g: 0.38074014, b: 0.3587274, a: 1}
+  m_IndirectSpecularColor: {r: 0.44292113, g: 0.48534042, b: 0.5354333, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -155,7 +155,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 743576e2a6ae27647bb6bff91451a004, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Materials: []
+  Materials:
+  - Albedo: {r: 0, g: 0, b: 0, a: 0}
+    Emission: {r: 10.680627, g: 8.779364, b: 0.8947122, a: 1}
+    Transmission: {r: 0, g: 0, b: 0, a: 0}
+    IOR: 1.459
+    Metalness: 0
+    Roughness: 0.4999
+    AlbedoTexture: {fileID: 0}
+    MRTexture: {fileID: 0}
+    NormalTexture: {fileID: 0}
+    EmissionTexture: {fileID: 0}
 --- !u!135 &62374447
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -264,7 +274,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 743576e2a6ae27647bb6bff91451a004, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Materials: []
+  Materials:
+  - Albedo: {r: 1, g: 1, b: 1, a: 1}
+    Emission: {r: 0, g: 0, b: 0, a: 0.99999994}
+    Transmission: {r: 0, g: 0, b: 0, a: 0}
+    IOR: 1.459
+    Metalness: 0
+    Roughness: 0.4999
+    AlbedoTexture: {fileID: 0}
+    MRTexture: {fileID: 0}
+    NormalTexture: {fileID: 0}
+    EmissionTexture: {fileID: 0}
 --- !u!136 &90688935
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -379,7 +399,7 @@ MonoBehaviour:
     Transmission: {r: 0, g: 0, b: 0, a: 0}
     IOR: 1.459
     Metalness: 1
-    Roughness: 0.02389999
+    Roughness: 0.005
     AlbedoTexture: {fileID: 0}
     MRTexture: {fileID: 0}
     NormalTexture: {fileID: 0}
@@ -606,7 +626,7 @@ MonoBehaviour:
     IOR: 1.459
     Metalness: 0
     Roughness: 0.8579
-    AlbedoTexture: {fileID: 2800000, guid: afbdbe24745a1564ba72687f8d952550, type: 3}
+    AlbedoTexture: {fileID: 0}
     MRTexture: {fileID: 0}
     NormalTexture: {fileID: 0}
     EmissionTexture: {fileID: 0}
@@ -716,9 +736,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2e18d570777fc8d48938f2c35253b4d5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Type: 0
+  Type: 2
   Color: {r: 1, g: 1, b: 1, a: 1}
-  Intensity: 5
+  Intensity: 1.5
   SpotAngle: 90
   AreaSize: {x: 1, y: 1}
 --- !u!108 &1002139584
@@ -730,10 +750,10 @@ Light:
   m_GameObject: {fileID: 1002139582}
   m_Enabled: 1
   serializedVersion: 10
-  m_Type: 2
+  m_Type: 1
   m_Shape: 0
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_Intensity: 5
+  m_Intensity: 1.5
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -790,13 +810,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1002139582}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4.31, y: 1.309, z: -13.27}
+  m_LocalRotation: {x: 0.059317417, y: -0.85168743, z: 0.0988223, w: 0.51121837}
+  m_LocalPosition: {x: -4.31, y: 3.08, z: -13.27}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 9
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 13.237, y: -118.052, z: 0}
 --- !u!1 &1072121282
 GameObject:
   m_ObjectHideFlags: 0
@@ -939,6 +959,11 @@ MonoBehaviour:
   MaxSamples: 1024
   UseBVH: 1
   BackfaceCulling: 0
+  BVHOptions:
+    strategy: 1
+    SAHBuckets: 12
+    SAHBundleCost: 0
+    SAHPrimCost: 1
   SaveAsPNG: 1
 --- !u!81 &1083165755
 AudioListener:
@@ -1037,7 +1062,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 743576e2a6ae27647bb6bff91451a004, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Materials: []
+  Materials:
+  - Albedo: {r: 1, g: 1, b: 1, a: 1}
+    Emission: {r: 0, g: 0, b: 0, a: 0.99999994}
+    Transmission: {r: 0, g: 0, b: 0, a: 0}
+    IOR: 1.459
+    Metalness: 0
+    Roughness: 0.4999
+    AlbedoTexture: {fileID: 0}
+    MRTexture: {fileID: 0}
+    NormalTexture: {fileID: 0}
+    EmissionTexture: {fileID: 0}
 --- !u!65 &1103249760
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1147,10 +1182,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Materials:
-  - Albedo: {r: 1, g: 1, b: 1, a: 1}
+  - Albedo: {r: 0, g: 0, b: 0, a: 1}
     Emission: {r: 0, g: 0, b: 0, a: 0.99999994}
-    Transmission: {r: 0, g: 0, b: 0, a: 0}
-    IOR: 1.459
+    Transmission: {r: 1, g: 1, b: 1, a: 0}
+    IOR: 2
     Metalness: 0
     Roughness: 0.4999
     AlbedoTexture: {fileID: 0}
@@ -1227,7 +1262,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2037577299}
   m_LocalRotation: {x: -0, y: 0.08516027, z: -0, w: 0.9963673}
-  m_LocalPosition: {x: -2.31, y: 0.74, z: -11.1}
+  m_LocalPosition: {x: -2.31, y: 1.059, z: -11.1}
   m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_Children: []
   m_Father: {fileID: 0}
