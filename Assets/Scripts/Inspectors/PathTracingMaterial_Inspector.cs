@@ -18,13 +18,27 @@ public class PathTracingMaterial_Drawer : PropertyDrawer
         totalHeight += spacing;
         totalHeight += EditorGUI.GetPropertyHeight(property.FindPropertyRelative("Emission"), label);
         totalHeight += spacing;
-        totalHeight += EditorGUI.GetPropertyHeight(property.FindPropertyRelative("Transmission"), label);
-        totalHeight += spacing;
         totalHeight += EditorGUI.GetPropertyHeight(property.FindPropertyRelative("IOR"), label);
         totalHeight += spacing;
         totalHeight += EditorGUI.GetPropertyHeight(property.FindPropertyRelative("Metalness"), label);
         totalHeight += spacing;
         totalHeight += EditorGUI.GetPropertyHeight(property.FindPropertyRelative("Roughness"), label);
+        totalHeight += spacing;
+        totalHeight += EditorGUI.GetPropertyHeight(property.FindPropertyRelative("Anisotropy"), label);
+        totalHeight += spacing;
+        totalHeight += EditorGUI.GetPropertyHeight(property.FindPropertyRelative("SpecularTransmission"), label);
+        totalHeight += spacing;
+        totalHeight += EditorGUI.GetPropertyHeight(property.FindPropertyRelative("SpecularTint"), label);
+        totalHeight += spacing;
+        totalHeight += EditorGUI.GetPropertyHeight(property.FindPropertyRelative("DiffuseTransmission"), label);
+        totalHeight += spacing;
+        totalHeight += EditorGUI.GetPropertyHeight(property.FindPropertyRelative("Clearcoat"), label);
+        totalHeight += spacing;
+        totalHeight += EditorGUI.GetPropertyHeight(property.FindPropertyRelative("ClearcoatGloss"), label);
+        totalHeight += spacing;
+        totalHeight += EditorGUI.GetPropertyHeight(property.FindPropertyRelative("Sheen"), label);
+        totalHeight += spacing;
+        totalHeight += EditorGUI.GetPropertyHeight(property.FindPropertyRelative("SheenTint"), label);
         totalHeight += spacing;
         totalHeight += EditorGUI.GetPropertyHeight(property.FindPropertyRelative("AlbedoTexture"), label);
         totalHeight += spacing;
@@ -66,10 +80,6 @@ public class PathTracingMaterial_Drawer : PropertyDrawer
         rect = CalculateRect(rect, EmissionProp);
         EditorGUI.PropertyField(rect, EmissionProp);
         
-        var TransmissionProp = property.FindPropertyRelative("Transmission");
-        rect = CalculateRect(rect, TransmissionProp);
-        EditorGUI.PropertyField(rect, TransmissionProp);
-        
         var IORProp = property.FindPropertyRelative("IOR");
         rect = CalculateRect(rect, IORProp);
         EditorGUI.PropertyField(rect, IORProp);
@@ -81,6 +91,38 @@ public class PathTracingMaterial_Drawer : PropertyDrawer
         var RoughnessProp = property.FindPropertyRelative("Roughness");
         rect = CalculateRect(rect, RoughnessProp);
         EditorGUI.Slider(rect, RoughnessProp, 0.0f, 1.0f);
+
+        var AnisoProp = property.FindPropertyRelative("Anisotropy");
+        rect = CalculateRect(rect, AnisoProp);
+        EditorGUI.Slider(rect, AnisoProp, 0.0f, 1.0f);
+
+        var SpecTransProp = property.FindPropertyRelative("SpecularTransmission");
+        rect = CalculateRect(rect, SpecTransProp);
+        EditorGUI.Slider(rect, SpecTransProp, 0.0f, 1.0f);
+
+        var SpecTintProp = property.FindPropertyRelative("SpecularTint");
+        rect = CalculateRect(rect, SpecTintProp);
+        EditorGUI.Slider(rect, SpecTintProp, 0.0f, 1.0f);
+
+        var DiffTransProp = property.FindPropertyRelative("DiffuseTransmission");
+        rect = CalculateRect(rect, DiffTransProp);
+        EditorGUI.Slider(rect, DiffTransProp, 0.0f, 1.0f);
+
+        var ClearcoatProp = property.FindPropertyRelative("Clearcoat");
+        rect = CalculateRect(rect, ClearcoatProp);
+        EditorGUI.Slider(rect, ClearcoatProp, 0.0f, 1.0f);
+
+        var ClearcoatGlossProp = property.FindPropertyRelative("ClearcoatGloss");
+        rect = CalculateRect(rect, ClearcoatGlossProp);
+        EditorGUI.Slider(rect, ClearcoatGlossProp, 0.0f, 1.0f);
+
+        var SheenProp = property.FindPropertyRelative("Sheen");
+        rect = CalculateRect(rect, SheenProp);
+        EditorGUI.Slider(rect, SheenProp, 0.0f, 1.0f);
+
+        var SheenTintProp = property.FindPropertyRelative("SheenTint");
+        rect = CalculateRect(rect, SheenTintProp);
+        EditorGUI.Slider(rect, SheenTintProp, 0.0f, 1.0f);
 
         var AlbedoTexProp = property.FindPropertyRelative("AlbedoTexture");
         rect = CalculateRect(rect, AlbedoTexProp);

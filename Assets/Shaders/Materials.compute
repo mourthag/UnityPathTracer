@@ -8,16 +8,29 @@
 //=----------Util Methods---------------=
 //=-------------------------------------=
 //=======================================
-float3 refract(float3 inc_dir, float3 normal, float ior_qout)
-    {
+float3 refract(float3 inc_dir, float3 normal, float ior_qout) {
         float cos_theta = min(dot(-inc_dir, normal), 1.0);
         float3 r_out_perp = ior_qout * (inc_dir + cos_theta * normal);
         float3 r_out_parallel = -sqrt(abs(1.0 - dot(r_out_perp, r_out_perp))) * normal;
         return r_out_perp + r_out_parallel;
+}
+
+bool transmit(float3 w_h, const float3 w_in, const float relIOR, inout float3 w_out) {
+    float c = dot(w_in, w_h);
+    if(c < 0.0) {
+        c = -c;
+        w_h = -w_h;
     }
 
-float Schlicks_Approx(float cosine, float refractive_index)
-{
+    const float root = 1.0 - relIOR * relIOR * (1.0 - c * c);
+    if(root <= 0.0)
+        return false;
+
+    w_out = (relIOR * c - sqrt(root) * w_h - relIOR * w_in);
+    return true;
+}
+
+float Schlicks_Approx(float cosine, float refractive_index) {
     float r0 = (1.0 - refractive_index) / (1.0 + refractive_index);
     r0 = r0 * r0;
     return r0 + (1.0 - r0) * pow(1.0 - cosine, 5.0);
@@ -26,19 +39,21 @@ float Schlicks_Approx(float cosine, float refractive_index)
 float SchlickWeight(float cosTheta) {
     return pow(saturate(1.0 - cosTheta), 5.0);
 }
+        
+float SchlickR0FromRelativeIOR(float eta) {
+    // https://seblagarde.wordpress.com/2013/04/29/memo-on-fresnel-equations/
+    return (eta - 1.0) * (eta - 1.0)/ ((eta + 1.0f) * (eta + 1.0));
+}
 
-float3 FresnelSchlick(float cosTheta, float3 F0)
-{
+float3 FresnelSchlick(float cosTheta, float3 F0) {
     return F0 + (1.0 - F0) * SchlickWeight(cosTheta);
 }
 
-float FresnelSchlick(float cosTheta, float F0)
-{
+float FresnelSchlick(float cosTheta, float F0) {
     return lerp(1.0, SchlickWeight(cosTheta), F0);
 }
 
-float FresnelDielectric(float cosTheta, float ni, float nt)
-{
+float FresnelDielectric(float cosTheta, float ni, float nt) {
     cosTheta = clamp(cosTheta, -1.0, 1.0);
 
     if (cosTheta < 0.0f) {
@@ -64,16 +79,14 @@ float FresnelDielectric(float cosTheta, float ni, float nt)
     return (rParallel * rParallel + rPerp * rPerp) / 2.0;
 }
 
-float GTR1(const float absDotHL, const float alpha)
-{
+float GTR1(const float absDotHL, const float alpha) {
     if (alpha >= 1)
         return PI_INV;
     float a2 = alpha * alpha;
     return (a2 - 1.0) / (PI * log2(a2) * (1.0 + (a2 - 1.0) * absDotHL * absDotHL));
 }
 
-float SeparableSmithGGXG1(const float3 w, const float a)
-{
+float SeparableSmithGGXG1(const float3 w, const float a) {
     const float a2 = a * a;
     const float absDotNV = AbsCosTheta(w);
     return 2.0 / (1.0 + sqrt(a2 + (1.0 - a2) * absDotNV * absDotNV));
@@ -107,7 +120,7 @@ float SeparableSmithGGXG1(const float3 w, const float3 w_h, const float ax, cons
     return 1.0 / (1.0 + lambda);
 }
 
-float GgxVndfAnisotropicPdf(const float3 w_in, const float3 w_h, const float3 w_out, const float ax, const float ay, inout float fPdfW, inout float rPdfW) {
+void GgxVndfAnisotropicPdf(const float3 w_in, const float3 w_h, const float3 w_out, const float ax, const float ay, inout float fPdfW, inout float rPdfW) {
     const float D = GgxAnisotropicD(w_h, ax, ay);
 
     const float absDotNL = AbsCosTheta(w_in);
@@ -122,8 +135,26 @@ float GgxVndfAnisotropicPdf(const float3 w_in, const float3 w_h, const float3 w_
     rPdfW = G1l * absDotHV * D / absDotNV;
 }
 
-float NDF_GGX(const float3 N, const float3 H, const float alpha)
-{
+float3 SampleGgxVndfAnisotropic(const float3 w_out, const float ax, const float ay, const float u1, const float u2) {
+    //Stretch V as if roughness==1
+    const float3 v = normalize(float3(w_out.x * ax, w_out.y, w_out.z * ay));
+
+    //build orthonormal basis with v, t1, t2
+    const float3 t1 = (v.y < 0.9999f) ? normalize(cross(v, float3(0,1,0))) : float3(1,0,0);
+    const float3 t2 = cross(v, t1);
+
+    const float a = 1.0/(1.0 + v.y);
+    const float r = sqrt(u1);
+    const float phi = (u2 < a) ? (u2 / a) * PI : PI + PI_INV * (u2 - a) / (1.0 - a);
+    const float p1 = cos(phi);
+    const float p2 = sin(phi) * (u2 < a ? 1.0 : v.y);
+
+    const float3 n = p1 * t1 + p2 * t2 + sqrt(max(0.0, 1.0 - square(p1) - square(p2))) * v;
+
+    return normalize(float3(ax * n.x, n.y, ay * n.z));
+}
+
+float NDF_GGX(const float3 N, const float3 H, const float alpha) {
     const float a2 = alpha * alpha;
     const float NdotH = max(dot(N, H), 0.0);
     float denom = (NdotH * NdotH * (a2 - 1.0) + 1.0);
@@ -132,9 +163,8 @@ float NDF_GGX(const float3 N, const float3 H, const float alpha)
     return a2 / denom;
 }
 
-float GeometrySchlickGGX(float NdotV, float roughness)
-{
-    //TODO different k for sampling strats?
+float GeometrySchlickGGX(float NdotV, float roughness) {
+    //TODO: different k for sampling strats?
     float r = (roughness + 1.0);
     float k = (r * r) / 8.0;
 
@@ -144,8 +174,7 @@ float GeometrySchlickGGX(float NdotV, float roughness)
     return nom / denom;
 }
 
-float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
-{
+float GeometrySmith(float3 N, float3 V, float3 L, float roughness) {
     float NdotV = max(dot(N, V), 0.0);
     float NdotL = max(dot(N, L), 0.0);
     float ggx1 = GeometrySchlickGGX(NdotV, roughness);
@@ -176,8 +205,11 @@ interface iMaterial
 
 struct MaterialBufferObject
 {
-    float3 albedo, emission, transmission;
-    float ior, metalness, roughness;
+    float3 albedo, emission;
+    float ior, metallic, roughness, anisotropy;
+    float specTrans, specTint, diffTrans;
+    float clearcoat, clearcoatGloss;
+    float sheen, sheenTint;
     int albedoTexId, emissionTexId, normalTexId, MRTexId;
 };
 
@@ -197,20 +229,15 @@ SamplerState sampler_MaterialEmissionTextures;
 
 //Disney BSDF Lobes
 class DisneyBSDF {
-    static void CalculateLobePdfs(const MaterialBufferObject mat, inout float pSpecular, inout float pDiffuse, inout float pClearcoat, inout float pSpecTrans) {
-        
-        //TODO add to material
-        const float specTrans = 0.0;
-        const float clearcoat = 0.0;
-        
+    void CalculateLobePdfs(const MaterialBufferObject mat, inout float pSpecular, inout float pDiffuse, inout float pClearcoat, inout float pSpecTrans) {        
         const float metallicBRDF = mat.metallic;
-        const float specularBSDF = (1.0 - mat.metallic) * specTrans;
-        const float dielectricBRDF = (1.0 - mat.metallic) * (1.0 - specTrans);
+        const float specularBSDF = (1.0 - mat.metallic) * mat.specTrans;
+        const float dielectricBRDF = (1.0 - mat.metallic) * (1.0 - mat.specTrans);
 
         const float specularWeight = metallicBRDF + dielectricBRDF;
         const float transmissionWeight = specularBSDF;
         const float diffuseWeight = dielectricBRDF;
-        const float clearcoatWeight = 1.0 * saturate(clearcoat);
+        const float clearcoatWeight = 1.0 * saturate(mat.clearcoat);
 
         const float norm = 1.0 / (specularWeight + transmissionWeight + diffuseWeight + clearcoatWeight);
 
@@ -220,28 +247,43 @@ class DisneyBSDF {
         pClearcoat = clearcoatWeight * norm;
     }
 
-    static float3 EvaluateDisneySheen(const MaterialBufferObject mat, const float3 w_in, const float3 w_out, const float3 w_h)
-    {
-        //TODO add to material
-        const float sheen = 0.0;
-        const float sheenTint = 0.0;
+    const float3 CalculateTint(const float3 basecolor) {
+        const float luminance = dot(float3(0.3f, 0.6f, 1.0f), basecolor);
+        return (luminance > 0.0f) ? basecolor * (1.0 / luminance) : float3(1, 1, 1);
+    }
 
-        const float luminance = dot(float3(0.3f, 0.6f, 1.0f), mat.albedo);
-        const float3 tint = (luminance > 0.0f) ? mat.albedo * (1.0 / luminance) : float3(1, 1, 1);
+    float ThinTransmissionRoughness(const float ior, const float roughness) {
+        return saturate((0.65 * ior - 0.35) * roughness);
+    }
 
-        if (sheen <= 0)
+    float3 DisneyFresnel(const MaterialBufferObject mat, const float3 w_out, const float3 w_h, const float3 w_in) {
+        const float dotHV = abs(dot(w_h, w_out));
+
+        const float3 tint = CalculateTint(mat.albedo);
+
+        float3 R0 = SchlickR0FromRelativeIOR(mat.ior) * lerp(float3(1.0, 1.0, 1.0), tint, mat.specTint);
+        R0 = lerp(R0, mat.albedo, mat.metallic);
+
+        const float dielectricFresnel = FresnelDielectric(dotHV, 1.0, mat.ior);
+        const float3 metallicFresnel = FresnelSchlick(dot(w_in, w_h), mat.albedo);
+
+        return lerp(float3(dielectricFresnel, dielectricFresnel, dielectricFresnel), metallicFresnel, mat.metallic);
+    }
+
+    float3 EvaluateDisneySheen(const MaterialBufferObject mat, const float3 w_out, const float3 w_h, const float3 w_in) {
+
+        const float3 tint = CalculateTint(mat.albedo);
+
+        if (mat.sheen <= 0)
             return (float3)0;
 
         float dotHL = dot(w_h, w_in);
-        return sheen * lerp(float3(1, 1, 1), tint, sheenTint) * SchlickWeight(dotHL);
+        return mat.sheen * lerp(float3(1, 1, 1), tint, mat.sheenTint) * SchlickWeight(dotHL);
     }
 
-    static float EvaluateDisneyClearcoat(const MaterialBufferObject mat, const float3 n, const float3 w_out, const float3 w_h, const float3 w_in, inout float fPdfW, inout float rPdfW) {
+    float EvaluateDisneyClearcoat(const MaterialBufferObject mat, const float3 w_out, const float3 w_h, const float3 w_in, inout float fPdfW, inout float rPdfW) {
 
-        float clearcoat = 0.0;
-
-        //TODO: add to material
-        if (clearcoat <= 0.0)
+        if (mat.clearcoat <= 0.0)
             return 0.0f;
 
         const float absDotNH = AbsCosTheta(w_h);
@@ -249,7 +291,7 @@ class DisneyBSDF {
         const float absDotNV = AbsCosTheta(w_out);
         const float dotHL = dot(w_h, w_in);
 
-        const float d = GTR1(absDotNH, lerp(0.1f, 0.001f, mat.roughness));
+        const float d = GTR1(absDotNH, lerp(0.1f, 0.001f, mat.clearcoatGloss));
         const float f = FresnelSchlick(dotHL, 0.04f);
         const float gl = SeparableSmithGGXG1(absDotNL, 0.25f);
         const float gv = SeparableSmithGGXG1(absDotNV, 0.25f);
@@ -257,10 +299,10 @@ class DisneyBSDF {
         fPdfW = d / (4.0f * absDotNL);
         rPdfW = d / (4.0f * absDotNV);
 
-        return 0.25f * clearcoat * d * f * gl * gv;
+        return 0.25f * mat.clearcoat * d * f * gl * gv;
     }
 
-    static float3 EvaluateDisneyBRDF(const MaterialBufferObject mat, const float3 w_out, const float3 w_h, const float3 w_in, inout float fPdf, inout float rPdf) {
+    float3 EvaluateDisneyBRDF(const MaterialBufferObject mat, const float3 w_out, const float3 w_h, const float3 w_in, inout float fPdf, inout float rPdf) {
         fPdf = 0;
         rPdf = 0;
 
@@ -270,16 +312,13 @@ class DisneyBSDF {
             return (float3)0;
 
         float ax, ay;
-        //TODO add aniso to material
-        const float aniso = 0.0;
-        ExtractAnisotropicParams(mat.roughness, aniso, ax, ay);
+        ExtractAnisotropicParams(mat.roughness, mat.anisotropy, ax, ay);
 
         const float d = GgxAnisotropicD(w_h, ax, ay);
         const float gl = SeparableSmithGGXG1(w_in, w_h, ax, ay);
         const float gv = SeparableSmithGGXG1(w_out, w_h, ax, ay);
 
-        //TODO: Disney Fresnel?
-        const float3 f = FresnelSchlick(dot(w_h, w_out), mat.albedo);
+        const float3 f = DisneyFresnel(mat, w_out, w_h, w_in);
 
         GgxVndfAnisotropicPdf(w_in, w_h, w_out, ax, ay, fPdf, rPdf);
         fPdf *= (1.0 / (4 * abs(dot(w_out, w_h))));
@@ -288,7 +327,7 @@ class DisneyBSDF {
         return d * gl * gv * f / (4.0f * dotNL * dotNV);
     }
 
-    static float3 EvaluateDisneySpecTransmission(const MaterialBufferObject mat, const float3 w_out, const float3 w_h, const float3 w_in, const float ax, const float ay, const bool thin) {
+    float3 EvaluateDisneySpecTransmission(const MaterialBufferObject mat, const float3 w_out, const float3 w_h, const float3 w_in, const float ax, const float ay, const bool thin) {
         const float n2 = mat.ior * mat.ior;
 
         const float absDotNL = AbsCosTheta(w_in);
@@ -302,7 +341,7 @@ class DisneyBSDF {
         const float gl = SeparableSmithGGXG1(w_in, w_h, ax, ay);
         const float gv = SeparableSmithGGXG1(w_out, w_h, ax, ay);
 
-        const float f = FresnelDielectric(dotHV, 1.0, 1.0 / mat.ior);
+        const float f = FresnelDielectric(dotHV, 1.0, mat.ior);
         float3 color = mat.albedo;
         if (thin)
             color = sqrt(mat.albedo);
@@ -315,16 +354,31 @@ class DisneyBSDF {
         return color * c * t * (1.0 - f) * gl * gv * d;
     }
 
-    static float EvaluateDisneyDiffuse(const MaterialBufferObject mat, const float3 w_out, const float3 w_h, const float3 w_in, const bool thin) {
+    float EvaluateDisneyRetroDiffuse(const MaterialBufferObject mat, const float3 w_out, const float3 w_h, const float3 w_in) {
+        const float roughness = mat.roughness * mat.roughness;
+
+        const float dotNL = AbsCosTheta(w_in);
+        const float dotNV = AbsCosTheta(w_out);
+
+        const float rr = 0.5 + 2.0 * roughness * dotNL * dotNL;
+        const float fl = SchlickWeight(dotNL);
+        const float fv = SchlickWeight(dotNV);
+
+        return  rr * (fl + fv + fl * fv * (rr - 1.0));
+
+
+    }
+
+    float EvaluateDisneyDiffuse(const MaterialBufferObject mat, const float3 w_out, const float3 w_h, const float3 w_in, const bool thin) {
         const float dotNL = AbsCosTheta(w_in);
         const float dotNV = AbsCosTheta(w_out);
 
         const float fl = SchlickWeight(dotNL);
         const float fv = SchlickWeight(dotNV);
 
-        float hanrahanKruger = 0.0f;
+        float hanrahanKrueger = 0.0f;
 
-        //TODO flatness
+        //TODO: flatness
         const float flatness = 0.1;
         if (thin && flatness > 0.0) {
             const float roughness = mat.roughness * mat.roughness;
@@ -334,18 +388,18 @@ class DisneyBSDF {
             const float fss = lerp(1.0, fss90, fl) * lerp(1.0, fss90, fv);
 
             const float ss = 1.25f * (fss * (1.0 / (dotNL + dotNV) - 0.5) + 0.5);
-            hanrahanKruger = ss;
+            hanrahanKrueger = ss;
         }
 
-        float lambert = 1.0;
+        const float lambert = 1.0;
+        const float retro = EvaluateDisneyRetroDiffuse(mat, w_out, w_h, w_in);
+        const float subsurfaceApprox = lerp(lambert, hanrahanKrueger, thin ? flatness : 0.0f);
 
-
-        float subsurfaceApprox = lerp(lambert, hanrahanKruger, thin ? flatness : 0.0f);
+        return PI_INV * (retro + (1.0 - 0.5 * fl) * (1.0 - 0.5 * fv) * subsurfaceApprox);
     }
 
-    static float3 EvaluateDisney(const MaterialBufferObject mat, const RayHit hit, const float3 v, const float3 l, bool thin, inout float fPdf, inout float rPdf)
-    {
-        const float3x3 worldToTangent = transpose(hit.tbn);
+    float3 EvaluateDisney(const MaterialBufferObject mat, const float3x3 worldToTangent, const float3 v, const float3 l, bool thin, inout float fPdf, inout float rPdf) {
+
         const float3 w_out = normalize(mul(v, worldToTangent));
         const float3 w_in = normalize(mul(l, worldToTangent));
         const float3 w_h = HalfVector(w_out, w_in);
@@ -362,9 +416,302 @@ class DisneyBSDF {
 
         const float3 albedo = mat.albedo;
         const float metallic = mat.metallic;
-        //TODO
-        const float specTrans = 0.0;
         const float roughness = mat.roughness;
+
+        //TODO:
+        const float relativeIOR = mat.ior;
+
+        float ax, ay;
+        ExtractAnisotropicParams(roughness, mat.anisotropy, ax, ay);
+        
+        const float diffuseWeight = (1.0f - metallic) * (1.0f - mat.specTrans);
+        const float transWeight   = (1.0f - metallic) * mat.specTrans;
+
+        //---------Clearcoat
+        const bool upperHemisphere = dotNL > 0.0 && dotNV > 0.0;
+        [branch]if(upperHemisphere && mat.clearcoat > 0.0) {
+            float forwardClearcoatPdf = 0.0;
+            float reverseClearcoatPdf = 0.0;
+
+            const float clearcoat = EvaluateDisneyClearcoat(mat, w_out, w_h, w_in, forwardClearcoatPdf, reverseClearcoatPdf);
+
+            reflectance += float3(clearcoat, clearcoat, clearcoat);
+            fPdf += pClearcoat * forwardClearcoatPdf;
+            rPdf += pClearcoat * reverseClearcoatPdf;
+        }
+
+        //--------Diffuse
+        [branch]if(diffuseWeight > 0.0) {
+            const float forwardDiffusePdf = AbsCosTheta(w_in);
+            const float reverseDiffusePdf = AbsCosTheta(w_out);
+            const float diffuse = EvaluateDisneyDiffuse(mat, w_out, w_h, w_in, thin);
+
+            const float3 sheen = EvaluateDisneySheen(mat, w_out, w_h, w_in);
+
+            reflectance += diffuseWeight * (diffuse * albedo + sheen);
+
+            fPdf += pDiffuse * forwardDiffusePdf;
+            rPdf += pDiffuse * reverseDiffusePdf;
+        }
+
+        //-------Transmission
+        [branch]if(transWeight > 0.0) {
+            const float rScaled = thin ? ThinTransmissionRoughness(mat.ior, roughness) : mat.roughness;
+            float tax, tay;
+            ExtractAnisotropicParams(rScaled, mat.anisotropy, tax, tay);
+
+            const float3 transmission = EvaluateDisneySpecTransmission(mat, w_out, w_h, w_in, tax, tay, thin);
+            reflectance += transmission;
+
+            float forwardTransmissivePdf, reverseTransmissivePdf;
+            GgxVndfAnisotropicPdf(w_in, w_h, w_out, tax, tay, forwardTransmissivePdf, reverseTransmissivePdf);
+
+            const float dotHL = dot(w_h, w_in);
+            const float dotHV = dot(w_h, w_out);
+            fPdf += pSpecTrans * forwardTransmissivePdf / square(dotHL + relativeIOR * dotHV);
+            rPdf += pSpecTrans * reverseTransmissivePdf / square(dotHV + relativeIOR * dotHL);
+        }
+
+        //------Specular
+        [branch]if(upperHemisphere) {
+            float forwardMetallicPdf, reverseMetallicPdf;
+            float3 specular = EvaluateDisneyBRDF(mat, w_out, w_h, w_in, forwardMetallicPdf, reverseMetallicPdf);
+
+            reflectance += specular;
+            fPdf += pBRDF * forwardMetallicPdf / (4.0 * abs(dot(w_out, w_h)));
+            rPdf += pBRDF * reverseMetallicPdf / (4.0 * abs(dot(w_in, w_h)));
+        }
+
+        reflectance = reflectance * abs(dotNL);
+
+        return reflectance;
+    }
+
+    bool SampleDisneyBRDF(const MaterialBufferObject mat, const float3x3 worldToTangent, const float3 v, inout Ray scatteredRay) {
+        const float3 w_out = mul(v, worldToTangent);
+
+        float ax, ay;
+        ExtractAnisotropicParams(mat.roughness, mat.anisotropy, ax, ay);
+
+        const float r0 = rand();
+        const float r1 = rand();
+        const float3 w_h = SampleGgxVndfAnisotropic(w_out, ax, ay, r0, r1);
+
+        const float3 w_in = normalize(reflect(w_out, w_h));
+        if(CosTheta(w_in) <= 0.0) {
+            scatteredRay.energy = (float3)0;
+            scatteredRay.direction = (float3)0;
+            return false;            
+        }
+
+        const float3 F = DisneyFresnel(mat, w_out, w_h, w_in);
+
+        const float G1v = SeparableSmithGGXG1(w_out, w_h, ax, ay);
+        const float3 specular = G1v * F;
+
+        scatteredRay.type = RAYTYPE_REFLECTION;
+        scatteredRay.energy = specular;
+        scatteredRay.setDirection(normalize(mul(w_in, transpose(worldToTangent))));
+
+        return true;
+    }
+
+    bool SampleDisneySpecTransmission(const MaterialBufferObject mat, const float3x3 worldToTangent, const float3 v, const bool thin, inout Ray scatteredRay) {
+        const float3 w_out = normalize(mul(v, worldToTangent));
+
+        if(CosTheta(w_out) == 0.0) {
+            scatteredRay.energy = (float3)0;
+            scatteredRay.direction = (float3)0;
+            return false;
+        }
+
+        const float rScaled = thin ? ThinTransmissionRoughness(mat.ior, mat.roughness) : mat.roughness;
+
+        float tax, tay;
+        ExtractAnisotropicParams(rScaled, mat.anisotropy, tax, tay);
+
+        const float r0 = rand();
+        const float r1 = rand();
+
+        const float3 w_h = SampleGgxVndfAnisotropic(w_out, tax, tay, r0, r1);
+
+        float dotHV = dot(w_out, w_h);
+        if(w_h.y < 0.0) {
+            dotHV = -dotHV;
+        }
+
+        const float F = FresnelDielectric(dotHV, 1.0, mat.ior);
+        const float G1v = SeparableSmithGGXG1(w_out, w_h, tax, tay);
+
+        float pdf;
+        float3 w_in = float3(0,1,0);
+        [branch]if(rand() <= F) {
+            w_in = normalize(reflect(w_out, w_h));
+
+            scatteredRay.type = RAYTYPE_REFLECTION;
+            scatteredRay.energy = G1v * mat.albedo;
+
+            const float jacobian = (4.0 * abs(dot(w_out, w_h)));
+            pdf = F / jacobian;
+        } 
+        else {
+            [branch]if(thin) {
+                w_in = reflect(w_out, w_h);
+                w_in.y = -w_in.y;
+
+                scatteredRay.type = RAYTYPE_REFLECTION;
+                scatteredRay.energy = G1v * sqrt(mat.albedo);
+            }
+            else {
+                [branch]if(transmit(w_h, w_out, mat.ior, w_in)) {
+                    scatteredRay.type = RAYTYPE_TRANSMISSION;
+                } 
+                else {
+                    w_in = reflect(w_out, w_h);
+                }
+                scatteredRay.energy = G1v * mat.albedo;
+            }
+
+            w_in = normalize(w_in);
+
+            const float dotHL = abs(dot(w_in, w_h));
+            const float jacobian = dotHL / (square(dotHL + mat.ior * dotHV));
+            pdf = (1.0 - F) / jacobian;
+        }
+
+        if(CosTheta(w_in) == 0.0f) {
+            scatteredRay.energy = (float3)0;
+            scatteredRay.direction = (float3)0;
+            return false;
+        }
+        
+        //Not using sample fPdf and rPdf here
+
+        scatteredRay.setDirection(normalize(mul(w_in, transpose(worldToTangent))));
+        return true;
+    }
+
+    bool SampleDisneyDiffuse(const MaterialBufferObject mat, const float3x3 worldToTangent, const float3 v, const bool thin, inout Ray scatteredRay) {
+        const float3 w_out = mul(v, worldToTangent);
+
+        const float sig = sign(CosTheta(w_out));
+
+        const float r0 = rand();
+        const float r1 = rand();
+        float3 w_in = sig * SampleCosineWeightedHemisphere(r0, r1);
+        const float3 w_h = HalfVector(w_in, w_out);
+
+        const float dotNL = CosTheta(w_in);
+        if(dotNL == 0.0) {
+            scatteredRay.energy = (float3)0;
+            scatteredRay.direction = (float3)0;
+            return false;
+        }
+
+        const float dotNV = CosTheta(w_out);
+
+        float pdf;
+        scatteredRay.type = RAYTYPE_REFLECTION;
+
+        float3 color = mat.albedo;
+        
+        const float p = rand();
+        if(p <= mat.diffTrans) {
+            w_in = -w_in;
+            pdf = mat.diffTrans;
+
+            if(thin) {
+                color = sqrt(color);
+            } else {
+                scatteredRay.type = RAYTYPE_TRANSMISSION;
+            }
+        } else {
+            pdf = (1.0 - mat.diffTrans);
+        }
+        
+        const float3 sheen = EvaluateDisneySheen(mat, w_out, w_h, w_in);
+        const float diffuse = EvaluateDisneyDiffuse(mat, w_out, w_h, w_in, thin); 
+
+        scatteredRay.energy = sheen + color * (diffuse / pdf);
+        scatteredRay.setDirection(normalize(mul(w_in, transpose(worldToTangent))));
+        
+        return true;
+    }
+
+    bool SampleDisneyClearcoat(const MaterialBufferObject mat, const float3x3 worldToTangent, const float3 v, inout Ray scatteredRay) {
+        const float3 w_out = mul(v, worldToTangent);
+
+        const float a = 0.25;
+        const float a2 = a * a;
+
+        const float r0 = rand();
+        const float r1 = rand();
+        const float cosTheta = sqrt(max(0.0, (1.0 - pow(a2, 1.0 - r0)) / (1.0 - a2)));
+        const float sinTheta = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
+        const float phi = 2 * PI * r1;
+
+        float3 w_h = float3(sinTheta * cos(phi), cosTheta, sinTheta * sin(phi));
+        if(dot(w_h, w_out) < 0.0) {
+            w_h = -w_h;
+        }
+
+        float3 w_in = reflect(w_out, w_h);
+        if(dot(w_in, w_out) < 0.0)
+            return false;
+
+        const float clearcoatWeight = mat.clearcoat;
+        
+        const float dotHN = CosTheta(w_h);
+        const float dotHL = dot(w_h, w_in);
+        const float absDotNL = abs(CosTheta(w_in));
+        const float absDotNV = abs(CosTheta(w_out));
+        
+        const float d = GTR1(abs(dotHL), lerp(0.1, 0.001, mat.clearcoatGloss));
+        const float f = FresnelSchlick(dotHL, 0.04f);
+        const float g = SeparableSmithGGXG1(w_in, 0.25) * SeparableSmithGGXG1(w_out, 0.25);
+
+        const float fPdfW = d / (4.0 * dot(w_out, w_h));
+        const float r = (0.25 * clearcoatWeight * g * f * d) / fPdfW;
+        scatteredRay.energy = float3(r, r, r);
+        scatteredRay.setDirection( normalize(mul(w_in, transpose(worldToTangent))));
+
+        return true;
+    }
+
+    bool SampleDisney(const MaterialBufferObject mat, const float3x3 worldToTangent, const float3 v, const bool thin, inout Ray scatteredRay) {
+        float pSpecular, pDiffuse, pClearcoat, pTransmission;
+
+        CalculateLobePdfs(mat, pSpecular, pDiffuse, pClearcoat, pTransmission);
+
+        bool success = false;
+        float pLobe = 0.0f;
+        const float p = rand();
+        [branch]if(p <= pSpecular) {
+            success = SampleDisneyBRDF(mat, worldToTangent, v, scatteredRay);
+            pLobe = pSpecular;
+        } 
+        else if(p <= (pSpecular + pClearcoat) && p > pSpecular) {
+            success = SampleDisneyClearcoat(mat, worldToTangent, v, scatteredRay);
+            pLobe = pClearcoat;
+        }
+        else if(p <= (pSpecular + pClearcoat + pDiffuse) && p > (pSpecular + pClearcoat)) {
+            success = SampleDisneyDiffuse(mat, worldToTangent, v, thin, scatteredRay);
+            pLobe = pDiffuse;
+        }
+        else if(pTransmission >= 0.0) {
+            success = SampleDisneySpecTransmission(mat, worldToTangent, v, thin, scatteredRay);
+            pLobe = pTransmission;
+        }
+        else {
+            //something is very wrong here
+            scatteredRay.energy = float3(10000000.0, 0, 0);
+            return false;
+        }
+
+        if(pLobe > 0.0f) {
+            scatteredRay.energy = scatteredRay.energy / pLobe;
+        }
+        return success;
     }
 };
 
@@ -389,17 +736,18 @@ class BufferMaterial
             bumpmapNormal.z = 1.0f - length(bumpmapNormal);
             bumpmapNormal = normalize(bumpmapNormal);
             hit.normal = mul(bumpmapNormal, hit.TBN);
+            hit.TBN = GetTangentSpace(hit.normal);
         }
         if(mat.MRTexId >= 0)
         {
             float2 MR = _MaterialMRTextures.SampleLevel(sampler_MaterialMRTextures, float3(hit.uv, mat.MRTexId),
             0).ra;
-            mat.metalness = MR.x;
+            mat.metallic = MR.x;
             mat.roughness = MR.y;
         }
     }
 
-    void EvaluateCookTorrance(const MaterialBufferObject mat, const Ray inRay, const RayHit hit, inout RayBuffer rb, inout float3 attenuation)
+    /*void EvaluateCookTorrance(const MaterialBufferObject mat, const Ray inRay, const RayHit hit, inout RayBuffer rb, inout float3 attenuation)
     {
         const float3 rayOrigin = hit.position + hit.normal * 0.0001f;
         const float3 reflected = reflect(inRay.direction, hit.normal);
@@ -407,7 +755,7 @@ class BufferMaterial
 
         const float3 V = -inRay.direction;
         float3 F0 = float3(0.04, 0.04, 0.04);
-        F0 = lerp(F0, mat.albedo, mat.metalness);
+        F0 = lerp(F0, mat.albedo, mat.metallic);
 
         float3 rayDirection = SampleHemisphere(hit.normal);
 
@@ -480,7 +828,7 @@ class BufferMaterial
             attenuation = reflectionRay.energy * GetContribution(lightId, reflectionRay);
         }
 #endif
-    }
+    }*/
 
     bool Scatter(Ray inRay, inout RayHit hit, inout float3 attenuation, inout RayBuffer rb)
     {
@@ -489,15 +837,52 @@ class BufferMaterial
 
         attenuation = 0;
         
-        if (!hit.isFrontFace)
+        if (!hit.isFrontFace) {
+
             hit.normal = -hit.normal;
+        } else {
+            mat.ior = 1.0 / mat.ior;
+        }
             
+        const float3x3 worldToTangent = transpose(float3x3(hit.TBN._m00_m01_m02, hit.normal, hit.TBN._m10_m11_m12));
+
 
         if ( any(mat.albedo))
         {
-            EvaluateCookTorrance(mat, inRay, hit, rb, attenuation);
+            //EvaluateCookTorrance(mat, inRay, hit, rb, attenuation);
+            float3 rayOrigin = hit.position + hit.normal * 0.0001f;
+            Ray newRay = CreateRay(rayOrigin, float3(0.0, 1.0, 0.0), RAYTYPE_REFLECTION);
+
+            DisneyBSDF bsdf;
+            const bool success = bsdf.SampleDisney(mat, worldToTangent, -inRay.direction, false, newRay);
+            float fPdf  = 0.0, rPdf = 0.0;
+            [branch]if(success) {
+
+                const float3 reflectance = bsdf.EvaluateDisney(mat, worldToTangent, -inRay.direction, newRay.direction, false, fPdf, rPdf);
+                newRay.energy = newRay.energy * inRay.energy * reflectance / fPdf ;
+
+#ifdef USE_RR
+                float surv_Chance = max(newRay.energy.x, max(newRay.energy.y, newRay.energy.z));
+                if(rand()>surv_Chance)
+                {
+                    return true;
+                }
+                newRay.energy *= 1.0 / surv_Chance;
+
+                fPdf = 0;
+#endif
+                rb.Push(newRay);
+            }
+            
+
+            const int lightID = GetRandomLightID();
+            const float3 lightDir = SampleLight(lightID, rayOrigin);
+            const Ray shadowRay = CreateRay(rayOrigin, lightDir, RAYTYPE_SHADOW);
+            const float3 reflectance = bsdf.EvaluateDisney(mat, worldToTangent, -inRay.direction, lightDir, false, fPdf, rPdf);
+            attenuation += reflectance * GetContribution(lightID, shadowRay);
+
         }
-        else if (any(mat.transmission))
+        /*else if (any(mat.transmission))
         {
             float3 rayOrigin = hit.position - hit.normal * 0.0001f;
 
@@ -524,10 +909,10 @@ class BufferMaterial
             Ray transmissionRay = CreateRay(rayOrigin, rayDirection, RAYTYPE_TRANSMISSION);
             transmissionRay.energy = inRay.energy * mat.transmission;
             rb.Push(transmissionRay);
-        }
+        }*/
         if (any(mat.emission))
         {
-            attenuation = mat.emission;
+            attenuation += mat.emission;
         }
         
         return true;

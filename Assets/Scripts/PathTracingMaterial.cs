@@ -5,8 +5,11 @@ using UnityEngine;
 
 public struct PtMaterialBufferObject
 {
-    public Vector3 Albedo, Emission, Transmission;
-    public float IOR, Metalness, Roughness;
+    public Vector3 Albedo, Emission;
+    public float IOR, Metalness, Roughness, Anisotropy;
+    public float SpecularTransmission, SpecularTint, DiffuseTransmission;
+    public float Clearcoat, ClearcoatGloss;
+    public float Sheen, SheenTint;
     public int AlbedoTextureId, EmissionTextureId, NormalTextureId, MRTextureId;
 }
 
@@ -20,9 +23,10 @@ public class PathTracingMaterial
 
     public Color Albedo;
     public Color Emission;
-    public Color Transmission;
-    public float IOR = 1.459f, Metalness, Roughness;
-
+    public float IOR = 1.459f, Metalness, Roughness, Anisotropy;
+    public float SpecularTransmission, SpecularTint, DiffuseTransmission;
+    public float Clearcoat, ClearcoatGloss;
+    public float Sheen, SheenTint;
     public Texture2D AlbedoTexture;
     public Texture2D MRTexture;
     public Texture2D NormalTexture;
@@ -94,11 +98,11 @@ public class PathTracingMaterial
         mat.Albedo = unityMaterial.GetColor("_Color");
         mat.Emission = unityMaterial.GetColor("_EmissionColor");
         mat.Metalness = unityMaterial.GetFloat("_Metallic");
-        mat.Roughness = 1.0f - unityMaterial.GetFloat("_Glossiness") - 0.0001f;
+        mat.Roughness = unityMaterial.GetFloat("_Glossiness");
 
         if (unityMaterial.name.Contains( "Glass"))
         {
-            mat.Transmission = new Color(1, 1, 1);
+            mat.SpecularTransmission = 1.0f;
             mat.Albedo = new Color(0, 0, 0);
         }
         return mat;
@@ -164,11 +168,18 @@ public class PathTracingMaterial
 
         obj.Albedo = new Vector3(Albedo.r, Albedo.g, Albedo.b);
         obj.Emission = new Vector3(Emission.r, Emission.g, Emission.b);
-        obj.Transmission = new Vector3(Transmission.r, Transmission.g, Transmission.b);
 
         obj.Roughness = Roughness;
         obj.Metalness = Metalness;
         obj.IOR = IOR;
+        obj.Anisotropy = Anisotropy;
+        obj.SpecularTransmission = SpecularTransmission;
+        obj.SpecularTint = SpecularTint;
+        obj.DiffuseTransmission = DiffuseTransmission;
+        obj.Clearcoat = Clearcoat;
+        obj.ClearcoatGloss = ClearcoatGloss;
+        obj.Sheen = Sheen;
+        obj.SheenTint = SheenTint;
 
         obj.AlbedoTextureId = _AlbedoTextureID; 
         obj.EmissionTextureId = _EmissionTextureID; 

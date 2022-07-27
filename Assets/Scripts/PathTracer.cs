@@ -187,7 +187,7 @@ public class PathTracer : MonoBehaviour
     {
         if (!_meshObjectsNeedRebuilding)
             return;
-        //TODO export reset method
+        //TODO: export reset method
         _currentSample = 0;
         _wasImageSaved = false;
         _startTime = DateTime.Now;
@@ -203,6 +203,7 @@ public class PathTracer : MonoBehaviour
             //Fetch Mesh and MeshRenderer to access their data
             var meshRenderer = ptObject.GetComponent<MeshRenderer>();
             var mesh = ptObject.GetComponent<MeshFilter>().sharedMesh;
+            mesh.RecalculateTangents();
 
             IEnumerable<Vertex> query = mesh.vertices.Zip(mesh.normals,
                 (position, normal) => new Vertex
@@ -210,13 +211,15 @@ public class PathTracer : MonoBehaviour
                     Position = position,
                     Normal = normal.normalized,
                 });
-            if (mesh.tangents.Length > 0)
+            if (mesh.tangents.Length > 0){
                 query = mesh.tangents.Zip(query, (tangent, vert) => new Vertex
                 {
                     Position = vert.Position,
                     Normal = vert.Normal,
                     Tangent = tangent
                 });
+                Debug.Log(mesh.tangents.Length);
+            }
             if (mesh.uv.Length > 0)
                 query = mesh.uv.Zip(query, (uv, vert) => new Vertex{
                     Position = vert.Position,
@@ -272,7 +275,7 @@ public class PathTracer : MonoBehaviour
         CreateComputeBuffer<MeshObject>(ref _meshObjectsBuffer, _meshObjects, 140);
         CreateComputeBuffer<Vertex>(ref _verticesBuffer, _vertices, 44);
         CreateComputeBuffer<int>(ref _indicesBuffer, _indices, 4);
-        CreateComputeBuffer<PtMaterialBufferObject>(ref _materialBuffer, _materialBufferObjects, 64);
+        CreateComputeBuffer<PtMaterialBufferObject>(ref _materialBuffer, _materialBufferObjects, 84);
         if (UseBVH)
         {
             CreateBVH();

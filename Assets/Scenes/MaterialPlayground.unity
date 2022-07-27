@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44292113, g: 0.48534042, b: 0.5354333, a: 1}
+  m_IndirectSpecularColor: {r: 0.44970518, g: 0.49977523, b: 0.5756387, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -142,7 +142,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &62374446
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -158,10 +158,17 @@ MonoBehaviour:
   Materials:
   - Albedo: {r: 0, g: 0, b: 0, a: 0}
     Emission: {r: 10.680627, g: 8.779364, b: 0.8947122, a: 1}
-    Transmission: {r: 0, g: 0, b: 0, a: 0}
     IOR: 1.459
     Metalness: 0
     Roughness: 0.4999
+    Anisotropy: 0
+    SpecularTransmission: 0
+    SpecularTint: 0
+    DiffuseTransmission: 0
+    Clearcoat: 0
+    ClearcoatGloss: 0
+    Sheen: 0
+    SheenTint: 0
     AlbedoTexture: {fileID: 0}
     MRTexture: {fileID: 0}
     NormalTexture: {fileID: 0}
@@ -261,7 +268,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &90688934
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -277,10 +284,17 @@ MonoBehaviour:
   Materials:
   - Albedo: {r: 1, g: 1, b: 1, a: 1}
     Emission: {r: 0, g: 0, b: 0, a: 0.99999994}
-    Transmission: {r: 0, g: 0, b: 0, a: 0}
     IOR: 1.459
     Metalness: 0
-    Roughness: 0.4999
+    Roughness: 0
+    Anisotropy: 0
+    SpecularTransmission: 1
+    SpecularTint: 0
+    DiffuseTransmission: 0
+    Clearcoat: 0
+    ClearcoatGloss: 0
+    Sheen: 0
+    SheenTint: 0
     AlbedoTexture: {fileID: 0}
     MRTexture: {fileID: 0}
     NormalTexture: {fileID: 0}
@@ -356,7 +370,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 90688933}
   m_LocalRotation: {x: 0.7572419, y: 0.24442928, z: -0.23025626, w: 0.5601974}
-  m_LocalPosition: {x: -4.75, y: 1.47, z: -15.09}
+  m_LocalPosition: {x: -4.87, y: 0.72, z: -11.16}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -396,10 +410,17 @@ MonoBehaviour:
   Materials:
   - Albedo: {r: 1, g: 0.71, b: 0.29, a: 1}
     Emission: {r: 0, g: 0, b: 0, a: 1}
-    Transmission: {r: 0, g: 0, b: 0, a: 0}
     IOR: 1.459
     Metalness: 1
-    Roughness: 0.005
+    Roughness: 0.788
+    Anisotropy: 0
+    SpecularTransmission: 0
+    SpecularTint: 0
+    DiffuseTransmission: 0
+    Clearcoat: 0
+    ClearcoatGloss: 0
+    Sheen: 0
+    SheenTint: 0
     AlbedoTexture: {fileID: 0}
     MRTexture: {fileID: 0}
     NormalTexture: {fileID: 0}
@@ -500,12 +521,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Materials:
-  - Albedo: {r: 0.9063317, g: 0.9063317, b: 0.9063317, a: 1}
+  - Albedo: {r: 0.5283019, g: 0.0119615365, b: 0.0119615365, a: 1}
     Emission: {r: 0, g: 0, b: 0, a: 1}
-    Transmission: {r: 0, g: 0, b: 0, a: 0}
     IOR: 1.459
-    Metalness: 0.303
-    Roughness: 0.8979
+    Metalness: 0
+    Roughness: 0.025
+    Anisotropy: 0
+    SpecularTransmission: 0
+    SpecularTint: 0
+    DiffuseTransmission: 0
+    Clearcoat: 0
+    ClearcoatGloss: 0
+    Sheen: 0
+    SheenTint: 0
     AlbedoTexture: {fileID: 0}
     MRTexture: {fileID: 0}
     NormalTexture: {fileID: 0}
@@ -620,12 +648,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Materials:
-  - Albedo: {r: 1, g: 1, b: 1, a: 1}
+  - Albedo: {r: 0.7754922, g: 0, b: 1, a: 1}
     Emission: {r: 0, g: 0, b: 0, a: 1}
-    Transmission: {r: 0, g: 0, b: 0, a: 0}
     IOR: 1.459
     Metalness: 0
-    Roughness: 0.8579
+    Roughness: 0.016
+    Anisotropy: 0
+    SpecularTransmission: 0
+    SpecularTint: 0
+    DiffuseTransmission: 0
+    Clearcoat: 1
+    ClearcoatGloss: 1
+    Sheen: 1
+    SheenTint: 0
     AlbedoTexture: {fileID: 0}
     MRTexture: {fileID: 0}
     NormalTexture: {fileID: 0}
@@ -738,7 +773,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Type: 2
   Color: {r: 1, g: 1, b: 1, a: 1}
-  Intensity: 1.5
+  Intensity: 1
   SpotAngle: 90
   AreaSize: {x: 1, y: 1}
 --- !u!108 &1002139584
@@ -810,13 +845,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1002139582}
-  m_LocalRotation: {x: 0.059317417, y: -0.85168743, z: 0.0988223, w: 0.51121837}
-  m_LocalPosition: {x: -4.31, y: 3.08, z: -13.27}
+  m_LocalRotation: {x: 0.300538, y: -0.64135534, z: 0.18163547, w: 0.6821648}
+  m_LocalPosition: {x: -1.67, y: 1.64, z: -10.57}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 9
-  m_LocalEulerAnglesHint: {x: 13.237, y: -118.052, z: 0}
+  m_LocalEulerAnglesHint: {x: 40.017, y: -90.248, z: -10.358}
 --- !u!1 &1072121282
 GameObject:
   m_ObjectHideFlags: 0
@@ -851,10 +886,17 @@ MonoBehaviour:
   Materials:
   - Albedo: {r: 0.95, g: 0.64, b: 0.54, a: 1}
     Emission: {r: 0, g: 0, b: 0, a: 1}
-    Transmission: {r: 0, g: 0, b: 0, a: 0}
     IOR: 1.459
     Metalness: 1
-    Roughness: 0.0048999954
+    Roughness: 1
+    Anisotropy: 0
+    SpecularTransmission: 0
+    SpecularTint: 0
+    DiffuseTransmission: 0
+    Clearcoat: 0
+    ClearcoatGloss: 0
+    Sheen: 0
+    SheenTint: 0
     AlbedoTexture: {fileID: 0}
     MRTexture: {fileID: 0}
     NormalTexture: {fileID: 0}
@@ -956,7 +998,7 @@ MonoBehaviour:
   PathTracingShader: {fileID: 7200000, guid: 17846c572b9261f469ab6467063d7b67, type: 3}
   SkyboxTexture: {fileID: 2800000, guid: 20122801766ee0946ab11beafa76b1ff, type: 3}
   OutputType: 0
-  MaxSamples: 1024
+  MaxSamples: 4096
   UseBVH: 1
   BackfaceCulling: 0
   BVHOptions:
@@ -1005,7 +1047,7 @@ Camera:
   m_CullingMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_RenderingPath: -1
+  m_RenderingPath: 3
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
   m_TargetEye: 3
@@ -1024,7 +1066,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1083165753}
   m_LocalRotation: {x: -0.046977375, y: 0.91530323, z: -0.12181071, w: -0.38101876}
-  m_LocalPosition: {x: -1.2, y: 1.202, z: -9.959}
+  m_LocalPosition: {x: -1.088, y: 1.201, z: -10.071}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -1065,10 +1107,17 @@ MonoBehaviour:
   Materials:
   - Albedo: {r: 1, g: 1, b: 1, a: 1}
     Emission: {r: 0, g: 0, b: 0, a: 0.99999994}
-    Transmission: {r: 0, g: 0, b: 0, a: 0}
     IOR: 1.459
     Metalness: 0
     Roughness: 0.4999
+    Anisotropy: 0
+    SpecularTransmission: 0
+    SpecularTint: 0
+    DiffuseTransmission: 0
+    Clearcoat: 0
+    ClearcoatGloss: 0
+    Sheen: 0
+    SheenTint: 0
     AlbedoTexture: {fileID: 0}
     MRTexture: {fileID: 0}
     NormalTexture: {fileID: 0}
@@ -1149,6 +1198,132 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 7
   m_LocalEulerAnglesHint: {x: 0, y: 9.77, z: 0}
+--- !u!1 &1908373855
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1908373860}
+  - component: {fileID: 1908373859}
+  - component: {fileID: 1908373858}
+  - component: {fileID: 1908373857}
+  - component: {fileID: 1908373856}
+  m_Layer: 0
+  m_Name: Cube
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1908373856
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1908373855}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 743576e2a6ae27647bb6bff91451a004, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Materials:
+  - Albedo: {r: 1, g: 1, b: 1, a: 1}
+    Emission: {r: 0, g: 0, b: 0, a: 0.99999994}
+    IOR: 1.459
+    Metalness: 0
+    Roughness: 0.003
+    Anisotropy: 0
+    SpecularTransmission: 0
+    SpecularTint: 0
+    DiffuseTransmission: 0.914
+    Clearcoat: 1
+    ClearcoatGloss: 1
+    Sheen: 0
+    SheenTint: 0
+    AlbedoTexture: {fileID: 0}
+    MRTexture: {fileID: 0}
+    NormalTexture: {fileID: 0}
+    EmissionTexture: {fileID: 0}
+--- !u!65 &1908373857
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1908373855}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!23 &1908373858
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1908373855}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1908373859
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1908373855}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!4 &1908373860
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1908373855}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -3.39868, y: 0.48, z: -13.09}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 10
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2037577299
 GameObject:
   m_ObjectHideFlags: 0
@@ -1168,7 +1343,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &2037577300
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1182,12 +1357,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Materials:
-  - Albedo: {r: 0, g: 0, b: 0, a: 1}
+  - Albedo: {r: 1, g: 1, b: 1, a: 1}
     Emission: {r: 0, g: 0, b: 0, a: 0.99999994}
-    Transmission: {r: 1, g: 1, b: 1, a: 0}
-    IOR: 2
+    IOR: 1.459
     Metalness: 0
-    Roughness: 0.4999
+    Roughness: 0.001
+    Anisotropy: 0
+    SpecularTransmission: 1
+    SpecularTint: 0
+    DiffuseTransmission: 0.087
+    Clearcoat: 0
+    ClearcoatGloss: 0.001
+    Sheen: 0
+    SheenTint: 0
     AlbedoTexture: {fileID: 0}
     MRTexture: {fileID: 0}
     NormalTexture: {fileID: 0}

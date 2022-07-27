@@ -226,7 +226,7 @@ class BVH : iGeometry
                             if (t_int > 0 && t_int < t )
                             {
                                 //skip if ray is shadow ray and material is transparent
-                                if(ray.type == RAYTYPE_SHADOW && any(_Materials[mesh.materialIndex].transmission))
+                                if(ray.type == RAYTYPE_SHADOW && any(_Materials[mesh.materialIndex].specTrans))
                                     continue;
 
                                 t = t_int;
@@ -239,13 +239,17 @@ class BVH : iGeometry
                                 const float3 normal = normalize(barycentric.x * n1 + barycentric.y * n2 + barycentric.z * n3);
                                 hit.normal = normal;
 
-                                const float3 t1 = mul(mesh.normalMatrix, float4(vert1.tangent, 0)).xyz;
-                                const float3 t2 = mul(mesh.normalMatrix, float4(vert2.tangent, 0)).xyz;
-                                const float3 t3 = mul(mesh.normalMatrix, float4(vert3.tangent, 0)).xyz;
-                                const float3 tangent = normalize(barycentric.x * t1 + barycentric.y * t2 + barycentric.z * t3);
+                                /*const float3 t1 = mul(mesh.normalMatrix, float4(vert1.tangent, 1)).xyz;
+                                const float3 t2 = mul(mesh.normalMatrix, float4(vert2.tangent, 1)).xyz;
+                                const float3 t3 = mul(mesh.normalMatrix, float4(vert3.tangent, 1)).xyz;
+                                const float3 tangent = normalize(barycentric.x * t1 + barycentric.y * t2 + barycentric.z * t3);*/
+                                
+                                /*const float3 c1 = cross(normal, float3(0,0,1));
+                                const float3 c2 = cross(normal, float3(0,1,0));
+                                const float3 tangent = length(c1) > length(c2) ? c1 : c2;
 
-                                const float3 bitangent = normalize(cross(normal, tangent));
-                                hit.TBN = float3x3(tangent, bitangent, normal);
+                                const float3 bitangent = normalize(cross(normal, tangent));*/
+                                hit.TBN = GetTangentSpace(hit.normal);//float3x3(tangent, bitangent, normal);
 
                                 hit.uv = barycentric.x * vert1.uv + barycentric.y * vert2.uv + barycentric.z * vert3.uv;
                                 hit.isFrontFace = dot(normal, -ray.direction) > 0;

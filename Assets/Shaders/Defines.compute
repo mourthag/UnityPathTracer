@@ -34,6 +34,10 @@ int randInt(int a, int b)
 	return int(f);
 }
 
+float square(const float a) {
+	return a * a;
+}
+
 float sdot(float3 x, float3 y, float f = 1.0f)
 {
 	return saturate(dot(x, y) * f);
@@ -48,8 +52,7 @@ float3 HalfVector(const float3 l, const float3 v) {
 	return normalize(l + v);
 }
 
-float3x3 GetTangentSpace(float3 normal)
-{
+float3x3 GetTangentSpace(float3 normal) {
 	// Choose a helper vector for the cross product
 	float3 helper = float3(1, 0, 0);
 	if (abs(normal.x) > 0.99f)
@@ -60,8 +63,7 @@ float3x3 GetTangentSpace(float3 normal)
 	return float3x3(tangent, binormal, normal);
 }
 
-float3 SampleHemisphere(float3 normal, float alpha = 0.0f)
-{
+float3 SampleHemisphere(float3 normal, float alpha = 0.0f) {
     // Sample the hemisphere, where alpha determines the kind of the sampling
     float cosTheta = pow(rand(), 1.0f / (alpha + 1.0f));
     float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
@@ -75,7 +77,7 @@ float3 SampleCT(const float3 reflected, const float roughness) {
 	const float eta1 = rand();
 	const float eta2 = rand();
 
-	//todo optimize by removing trigo methods (see sin(atan(x)))
+	//TODO: optimize by removing trigo methods (see sin(atan(x)))
 	const float theta = atan(roughness * sqrt(eta1)/sqrt(1-eta1));
 	const float cosTheta = cos(theta);
 	const float sinTheta = sin(theta);
@@ -151,6 +153,13 @@ float Sin2Phi(const float3 w)
 	return sinPhi * sinPhi;
 }
 
+
+float3 SampleCosineWeightedHemisphere(const float r0, const float r1) {
+	const float r = sqrt(r0);
+	const float theta = 2.0 * PI * r1;
+
+	return float3(r * cos(theta), sqrt(max(0.0, 1.0 - r0)), r * sin(theta));
+}
 //=======================================
 //=-------------------------------------=
 //=---------------Rays------------------=
@@ -174,6 +183,11 @@ struct Ray {
 	{
 		return type == RAYTYPE_INVALID || !any(energy);
 	}
+
+	void setDirection(const float3 newDir) {
+		direction = newDir;
+		inv_dir = 1.0/inv_dir;
+	}
 };
 
 Ray CreateInvalidRay() {
@@ -187,11 +201,13 @@ Ray CreateInvalidRay() {
 }
 
 Ray CreateRay(float3 origin, float3 direction, int type) {
+
+
 	Ray ray;
 	ray.origin = origin;
 	ray.direction = direction;
-	ray.energy = float3(1.0f, 1.0f, 1.0f);
 	ray.inv_dir = 1.0 / direction;
+	ray.energy = float3(1.0f, 1.0f, 1.0f);
 	ray.type = type;
 	return ray;
 }
