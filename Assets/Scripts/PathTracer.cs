@@ -458,7 +458,9 @@ public class PathTracer : MonoBehaviour
         Graphics.Blit(_target, destination);
 
         _currentSample++;
+#if UNITY_EDITOR
         EditorUtility.SetDirty(this);
+#endif
     }
     private void InitRenderTexture()
     {

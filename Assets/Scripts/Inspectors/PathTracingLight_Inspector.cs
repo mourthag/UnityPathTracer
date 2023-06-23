@@ -1,4 +1,4 @@
-
+#if UNITY_EDITOR
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 using UnityEditor;
@@ -42,3 +42,4 @@ public class PathTracingLight_Inspector : Editor
     }
 
 }
+#endif

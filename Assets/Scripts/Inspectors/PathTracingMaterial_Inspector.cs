@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -145,3 +146,4 @@ public class PathTracingMaterial_Drawer : PropertyDrawer
         EditorGUI.EndProperty();
     }
 }
+#endif

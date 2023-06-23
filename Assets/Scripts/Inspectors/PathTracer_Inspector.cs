@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -70,3 +71,4 @@ public class PathTracer_Inspector : Editor
         EditorGUILayout.Space ();
     }
 }
+#endif

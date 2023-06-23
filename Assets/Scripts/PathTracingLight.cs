@@ -34,7 +34,8 @@ public class PathTracingLight : MonoBehaviour
     public float SpotAngle = 90.0f;
     public Vector2 AreaSize = new Vector2(1,1);
 
-    
+#if UNITY_EDITOR
+
     public void ImportParametersFromUnityLight(){
        var light = GetComponent<Light>();
 
@@ -64,6 +65,7 @@ public class PathTracingLight : MonoBehaviour
         }
 
     }
+#endif
 
     // Start is called before the first frame update
     void OnEnable()

@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -27,3 +28,4 @@ public class PathTracingObject_Inspector : Editor
         serializedObject.ApplyModifiedProperties();
     }
 }
+#endif
